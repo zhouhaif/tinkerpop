@@ -1167,6 +1167,7 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
     /////////////////////////////////////////////
 
     /////////////////////////////////////////////
+    @org.junit.Ignore
     @Test
     @LoadGraphWith(MODERN)
     public void shouldStartAndEndWorkersForVertexProgramAndMapReduce() throws Exception {
