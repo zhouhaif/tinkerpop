@@ -19,6 +19,7 @@
 package org.apache.tinkerpop.gremlin.server.op;
 
 import io.netty.channel.ChannelHandlerContext;
+import org.apache.tinkerpop.gremlin.driver.Tokens;
 import org.apache.tinkerpop.gremlin.driver.message.RequestMessage;
 import org.apache.tinkerpop.gremlin.driver.message.ResponseMessage;
 import org.apache.tinkerpop.gremlin.driver.message.ResponseStatusCode;
@@ -39,11 +40,13 @@ import static org.mockito.Matchers.anyString;
 
 public class AbstractEvalOpProcessorTest {
 
-    @org.junit.Ignore
     @Test
     public void evalOpInternalShouldHandleAllEvaluationExceptions() throws OpProcessorException {
         final AbstractEvalOpProcessor processor = new StandardOpProcessor();
-        final RequestMessage request = RequestMessage.build("test").create();
+        final RequestMessage request = RequestMessage.build("test")
+                .addArg(Tokens.ARGS_GREMLIN, "1+1")
+                .addArg(Tokens.ARGS_LANGUAGE, "gremlin-groovy")
+                .create();
         final Settings settings = new Settings();
         final ChannelHandlerContext ctx = Mockito.mock(ChannelHandlerContext.class);
         final ArgumentCaptor<ResponseMessage> responseCaptor = ArgumentCaptor.forClass(ResponseMessage.class);
