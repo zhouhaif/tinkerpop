@@ -171,6 +171,7 @@ public class GremlinGroovyScriptEngine extends GroovyScriptEngineImpl
                     throw e;
                 } finally {
                     final long time = System.currentTimeMillis() - start;
+                    log.info("Script Length: {},compile cost: {}",script.length(),time);
                     if (time > expectedCompilationTime) {
                         //We warn if a script took longer than a few seconds. Repeatedly seeing these warnings is a sign that something is wrong.
                         //Scripts with a large numbers of parameters often trigger this and should be avoided.

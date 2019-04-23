@@ -282,6 +282,11 @@ public class BulkLoaderVertexProgram implements VertexProgram<Tuple> {
         return Collections.singleton(messageScope);
     }
 
+    @Override
+    public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException {
+        return null;
+    }
+
     @SuppressWarnings({"CloneDoesntDeclareCloneNotSupportedException", "CloneDoesntCallSuperClone"})
     @Override
     public VertexProgram<Tuple> clone() {

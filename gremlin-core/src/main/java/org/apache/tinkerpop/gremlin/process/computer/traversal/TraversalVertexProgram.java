@@ -399,6 +399,11 @@ public final class TraversalVertexProgram implements VertexProgram<TraverserSet<
     }
 
     @Override
+    public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException {
+        return null;
+    }
+
+    @Override
     public Optional<MessageCombiner<TraverserSet<Object>>> getMessageCombiner() {
         return (Optional) TraversalVertexProgramMessageCombiner.instance();
     }
