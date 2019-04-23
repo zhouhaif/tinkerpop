@@ -830,7 +830,7 @@ public class GremlinGroovyScriptEngine extends GroovyScriptEngineImpl implements
                         log.warn("Script compilation {} took {}ms", script, time);
                         longRunCompilationCount.incrementAndGet();
                     } else {
-                        log.debug("Script compilation {} took {}ms", script, time);
+                        log.info("Script compilation {} took {}ms", script, time);
                     }
                 }
             }, Runnable::run);

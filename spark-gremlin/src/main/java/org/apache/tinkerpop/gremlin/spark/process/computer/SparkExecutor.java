@@ -239,4 +239,12 @@ public final class SparkExecutor {
             reduceRDD = reduceRDD.sortByKey(mapReduce.getReduceKeySort().get(), true, 1);
         return reduceRDD;
     }
+
+    public static <K, V> void executeWriteBack(
+            final JavaPairRDD<K, V> writeBackRDD,
+            final Configuration graphComputerConfiguration,VertexProgram<Object> vertexProgram) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+        VertexProgram.WriteBackService service = vertexProgram.getServiceClass().newInstance();
+        service.setConfigration(graphComputerConfiguration);
+        service.execute(writeBackRDD,vertexProgram);
+    }
 }

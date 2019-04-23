@@ -20,12 +20,15 @@
 package org.apache.tinkerpop.gremlin.process.computer;
 
 import org.apache.commons.configuration.Configuration;
+import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.traverser.TraverserRequirement;
 import org.apache.tinkerpop.gremlin.structure.Graph;
+import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import java.lang.reflect.Constructor;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -194,6 +197,8 @@ public interface VertexProgram<M> extends Cloneable {
         return Collections.emptySet();
     }
 
+    public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException;
+
     /**
      * When multiple workers on a single machine need VertexProgram instances, it is possible to use clone.
      * This will provide a speedier way of generating instances, over the {@link VertexProgram#storeState} and {@link VertexProgram#loadState} model.
@@ -247,6 +252,14 @@ public interface VertexProgram<M> extends Cloneable {
         }
 
     }
+    public interface  WriteBackService<T,M>{
+
+        public void setConfigration(Configuration configration);
+
+        public void execute(final T input,final VertexProgram<M> vertexProgram);
+
+        public Map<String, Object> getGraphConfig();
+    }
 
     public default Features getFeatures() {
         return new Features() {
@@ -291,6 +304,10 @@ public interface VertexProgram<M> extends Cloneable {
         }
 
         public default boolean requiresEdgePropertyRemoval() {
+            return false;
+        }
+
+        public default boolean requiresWriteBackToOriginalGraph() {
             return false;
         }
     }

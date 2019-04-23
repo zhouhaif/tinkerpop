@@ -148,6 +148,11 @@ public class PageRankVertexProgram implements VertexProgram<Double> {
     }
 
     @Override
+    public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException {
+        return null;
+    }
+
+    @Override
     public PageRankVertexProgram clone() {
         try {
             final PageRankVertexProgram clone = (PageRankVertexProgram) super.clone();

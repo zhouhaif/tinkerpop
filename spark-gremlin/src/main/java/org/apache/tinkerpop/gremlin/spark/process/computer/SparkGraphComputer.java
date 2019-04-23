@@ -78,9 +78,7 @@ import org.apache.tinkerpop.gremlin.structure.io.gryo.kryoshim.KryoShimServiceLo
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -413,6 +411,9 @@ public final class SparkGraphComputer extends AbstractHadoopGraphComputer {
                             // ensure that the computedGraphRDD was not created
                             assert null == computedGraphRDD;
                         }
+                    }
+                    if (this.vertexProgram.getFeatures().requiresWriteBackToOriginalGraph()) {
+                        SparkExecutor.executeWriteBack(computedGraphRDD,graphComputerConfiguration,this.vertexProgram);
                     }
                     /////////////////
                     memory.complete(); // drop all transient memory keys

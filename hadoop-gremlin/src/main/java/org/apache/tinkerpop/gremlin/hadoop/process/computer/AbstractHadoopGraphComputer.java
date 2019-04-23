@@ -243,6 +243,11 @@ public abstract class AbstractHadoopGraphComputer implements GraphComputer {
         }
 
         @Override
+        public boolean supportsWriteBackToOriginalGraph() {
+            return true;
+        }
+
+        @Override
         public boolean supportsDirectObjects() {
             return false;
         }

@@ -211,6 +211,10 @@ public interface GraphComputer {
             return true;
         }
 
+        public default boolean supportsWriteBackToOriginalGraph() {
+            return true;
+        }
+
         /**
          * Supports {@link VertexProgram} and {@link MapReduce} parameters to be direct referenced Java objects (no serialization required).
          * This is typically true for single machine graph computer engines. For cluster oriented graph computers, this is typically false.
