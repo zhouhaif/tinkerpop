@@ -71,7 +71,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
     private static final String DISTRIBUTE_VOTE = "gremlin.peerPressureVertexProgram.distributeVote";
     private static final String EDGE_TRAVERSAL = "gremlin.peerPressureVertexProgram.edgeTraversal";
     private static final String VOTE_TO_HALT = "gremlin.peerPressureVertexProgram.voteToHalt";
-    private static final String WRITE_SERVICE = "org.janusgraph.hadoop.PeerPresureWriteBackService";
+    private static final String WRITE_SERVICE = "org.janusgraph.hadoop.PeerPressureWriteBackService";
 
     private PureTraversal<Vertex, Edge> edgeTraversal = null;
     private PureTraversal<Vertex, ? extends Number> initialVoteStrengthTraversal = null;
