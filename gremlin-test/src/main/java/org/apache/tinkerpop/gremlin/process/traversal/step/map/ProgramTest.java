@@ -281,6 +281,11 @@ public abstract class ProgramTest extends AbstractGremlinProcessTest {
         }
 
         @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
+        }
+
+        @Override
         public TestProgram clone() {
             try {
                 final TestProgram clone = (TestProgram) super.clone();

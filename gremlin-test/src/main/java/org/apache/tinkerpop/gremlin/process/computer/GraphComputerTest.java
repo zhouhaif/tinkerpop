@@ -283,6 +283,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         }
 
         @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
+        }
+
+        @Override
         public GraphComputer.ResultGraph getPreferredResultGraph() {
             return GraphComputer.ResultGraph.ORIGINAL;
         }
@@ -329,6 +334,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         @Override
         public Set<MessageScope> getMessageScopes(final Memory memory) {
             return Collections.emptySet();
+        }
+
+        @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
         }
 
         @Override
@@ -379,6 +389,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         @Override
         public Set<MessageScope> getMessageScopes(final Memory memory) {
             return Collections.emptySet();
+        }
+
+        @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
         }
 
         @Override
@@ -456,6 +471,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         }
 
         @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
+        }
+
+        @Override
         public GraphComputer.ResultGraph getPreferredResultGraph() {
             return GraphComputer.ResultGraph.ORIGINAL;
         }
@@ -514,6 +534,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         @Override
         public Set<MessageScope> getMessageScopes(final Memory memory) {
             return Collections.emptySet();
+        }
+
+        @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
         }
 
         @Override
@@ -603,6 +628,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         @Override
         public Set<MessageScope> getMessageScopes(Memory memory) {
             return Collections.emptySet();
+        }
+
+        @Override
+        public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException {
+            return null;
         }
 
         @Override
@@ -737,6 +767,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         }
 
         @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
+        }
+
+        @Override
         public GraphComputer.ResultGraph getPreferredResultGraph() {
             return GraphComputer.ResultGraph.NEW;
         }
@@ -825,6 +860,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         @Override
         public Set<MessageScope> getMessageScopes(Memory memory) {
             return Collections.emptySet();
+        }
+
+        @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
         }
 
         @Override
@@ -1155,6 +1195,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         }
 
         @Override
+        public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException {
+            return null;
+        }
+
+        @Override
         public GraphComputer.ResultGraph getPreferredResultGraph() {
             return GraphComputer.ResultGraph.NEW;
         }
@@ -1238,6 +1283,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         @Override
         public Set<MessageScope> getMessageScopes(Memory memory) {
             return Collections.emptySet();
+        }
+
+        @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
         }
 
         @Override
@@ -1488,6 +1538,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         }
 
         @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
+        }
+
+        @Override
         public GraphComputer.ResultGraph getPreferredResultGraph() {
             return GraphComputer.ResultGraph.NEW;
         }
@@ -1567,6 +1622,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         }
 
         @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
+        }
+
+        @Override
         public GraphComputer.ResultGraph getPreferredResultGraph() {
             return GraphComputer.ResultGraph.NEW;
         }
@@ -1627,6 +1687,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
             scopes.add(countMessageScopeIn);
             scopes.add(countMessageScopeOut);
             return scopes;
+        }
+
+        @Override
+        public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException {
+            return null;
         }
 
         @Override
@@ -1697,6 +1762,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
             scopes.add(countMessageScopeIn);
             scopes.add(countMessageScopeOut);
             return scopes;
+        }
+
+        @Override
+        public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException {
+            return null;
         }
 
         @Override
@@ -1918,6 +1988,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         @Override
         public Set<MessageScope> getMessageScopes(Memory memory) {
             return Collections.emptySet();
+        }
+
+        @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
         }
 
         @Override
@@ -2179,6 +2254,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         }
 
         @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
+        }
+
+        @Override
         public Set<VertexComputeKey> getVertexComputeKeys() {
             return Collections.singleton(VertexComputeKey.of("age", false));
         }
@@ -2308,6 +2388,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         @Override
         public Set<MessageScope> getMessageScopes(final Memory memory) {
             return Collections.emptySet();
+        }
+
+        @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
         }
 
         @Override
@@ -2458,6 +2543,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         @Override
         public Set<MessageScope> getMessageScopes(final Memory memory) {
             return Collections.emptySet();
+        }
+
+        @Override
+        public Class getServiceClass() throws ClassNotFoundException {
+            return null;
         }
 
         @Override
@@ -2672,6 +2762,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         }
 
         @Override
+        public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException {
+            return null;
+        }
+
+        @Override
         public Features getFeatures() {
             return new Features() {
                 @Override
@@ -2820,6 +2915,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         @Override
         public Set<MessageScope> getMessageScopes(final Memory memory) {
             return Collections.singleton(this.messageScope);
+        }
+
+        @Override
+        public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException {
+            return null;
         }
 
         @Override
