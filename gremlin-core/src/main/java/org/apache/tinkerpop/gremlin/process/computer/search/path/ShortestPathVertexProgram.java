@@ -194,6 +194,11 @@ public class ShortestPathVertexProgram implements VertexProgram<Triplet<Path, Ed
     }
 
     @Override
+    public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException {
+        return null;
+    }
+
+    @Override
     public VertexProgram<Triplet<Path, Edge, Number>> clone() {
         try {
             final ShortestPathVertexProgram clone = (ShortestPathVertexProgram) super.clone();

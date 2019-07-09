@@ -190,6 +190,11 @@ public class ConnectedComponentVertexProgram implements VertexProgram<String> {
     }
 
     @Override
+    public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException {
+        return null;
+    }
+
+    @Override
     public GraphComputer.ResultGraph getPreferredResultGraph() {
         return GraphComputer.ResultGraph.NEW;
     }
