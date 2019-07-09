@@ -304,7 +304,7 @@ public class __ {
     public static <A> GraphTraversal<A, Path> path() {
         return __.<A>start().path();
     }
-    public static <A> GraphTraversal<A, Path> shortestPath(final Long toIds,final Integer distance){return __.<A>start().shortestPathTransaction(toIds, distance);}
+    public static <A> GraphTraversal<A, Path> shortestPathTransaction(final Long toIds,final Integer distance){return __.<A>start().shortestPathTransaction(toIds, distance);}
     /**
      * @see GraphTraversal#match(Traversal[])
      */
