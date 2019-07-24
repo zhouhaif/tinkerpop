@@ -20,8 +20,10 @@ package org.apache.tinkerpop.gremlin.server.handler;
 
 import io.netty.handler.codec.http.HttpMessage;
 
+import static io.netty.handler.codec.http.HttpHeaderNames.SEC_WEBSOCKET_KEY;
 import static io.netty.handler.codec.http.HttpHeaderNames.UPGRADE;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONNECTION;
+import static io.netty.handler.codec.http.HttpHeaders.Names.SEC_WEBSOCKET_VERSION;
 
 /**
  * A class to handle common WebSocket operations.
@@ -34,6 +36,7 @@ final class WebSocketHandlerUtil {
         final String connectionHeader = msg.headers().get(CONNECTION);
         final String upgradeHeader = msg.headers().get(UPGRADE);
         return (null != connectionHeader && connectionHeader.equalsIgnoreCase("Upgrade")) ||
-               (null != upgradeHeader && upgradeHeader.equalsIgnoreCase("WebSocket"));
+               (null != upgradeHeader && upgradeHeader.equalsIgnoreCase("WebSocket")||
+                       (msg.headers().contains(SEC_WEBSOCKET_VERSION))||(msg.headers().contains(SEC_WEBSOCKET_KEY)));
     }
 }
