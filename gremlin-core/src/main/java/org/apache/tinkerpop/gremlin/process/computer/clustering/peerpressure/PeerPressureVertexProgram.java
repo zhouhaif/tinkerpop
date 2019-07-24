@@ -72,12 +72,14 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
     private static final String EDGE_TRAVERSAL = "gremlin.peerPressureVertexProgram.edgeTraversal";
     private static final String VOTE_TO_HALT = "gremlin.peerPressureVertexProgram.voteToHalt";
     private static final String WRITE_SERVICE = "org.janusgraph.hadoop.PeerPressureWriteBackService";
+    private static final String PREFIX = "gremlin.peerPressureVertexProgram.prefix";
 
     private PureTraversal<Vertex, Edge> edgeTraversal = null;
     private PureTraversal<Vertex, ? extends Number> initialVoteStrengthTraversal = null;
     private int maxIterations = 30;
     private boolean distributeVote = false;
     private String property = CLUSTER;
+    private String prefix = "Prefix";
 
     private static final Set<MemoryComputeKey> MEMORY_COMPUTE_KEYS = Collections.singleton(MemoryComputeKey.of(VOTE_TO_HALT, Operator.and, false, true));
 
@@ -94,6 +96,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
             this.voteScope = MessageScope.Local.of(() -> this.edgeTraversal.get().clone());
             this.countScope = MessageScope.Local.of(new MessageScope.Local.ReverseTraversalSupplier(this.voteScope));
         }
+        this.prefix = this.prefix + configuration.getString(PREFIX,"");
         this.property = configuration.getString(PROPERTY, CLUSTER);
         this.maxIterations = configuration.getInt(MAX_ITERATIONS, 30);
         this.distributeVote = configuration.getBoolean(DISTRIBUTE_VOTE, false);
@@ -103,6 +106,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
     public void storeState(final Configuration configuration) {
         super.storeState(configuration);
         configuration.setProperty(PROPERTY, this.property);
+        configuration.setProperty(PREFIX, this.prefix);
         configuration.setProperty(MAX_ITERATIONS, this.maxIterations);
         configuration.setProperty(DISTRIBUTE_VOTE, this.distributeVote);
         if (null != this.edgeTraversal)
@@ -113,7 +117,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
 
     @Override
     public Set<VertexComputeKey> getVertexComputeKeys() {
-        return new HashSet<>(Arrays.asList(VertexComputeKey.of(this.property, false), VertexComputeKey.of(VOTE_STRENGTH, true)));
+        return new HashSet<>(Arrays.asList(VertexComputeKey.of(this.property, false), VertexComputeKey.of(VOTE_STRENGTH, true),VertexComputeKey.of(this.prefix, true)));
     }
 
     @Override
@@ -234,6 +238,11 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
 
         public Builder property(final String key) {
             this.configuration.setProperty(PROPERTY, key);
+            return this;
+        }
+
+        public Builder prefix(final String prefix) {
+            this.configuration.setProperty(PREFIX, prefix);
             return this;
         }
 
