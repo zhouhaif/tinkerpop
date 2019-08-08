@@ -39,6 +39,7 @@ import org.apache.tinkerpop.gremlin.process.traversal.step.util.ReducingBarrierS
 import org.apache.tinkerpop.gremlin.process.traversal.traverser.TraverserRequirement;
 import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalUtil;
 import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
+import org.apache.tinkerpop.gremlin.util.function.ConcurrentHashMapSupplier;
 import org.apache.tinkerpop.gremlin.util.function.HashMapSupplier;
 
 import java.io.Serializable;
@@ -47,6 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BinaryOperator;
 
 /**
@@ -65,7 +67,7 @@ public final class GroupStep<S, K, V> extends ReducingBarrierStep<S, Map<K, V>> 
         this.valueTraversal = this.integrateChild(__.fold().asAdmin());
         this.barrierStep = determineBarrierStep(this.valueTraversal);
         this.setReducingBiOperator(new GroupBiOperator<>(null == this.barrierStep ? Operator.assign : this.barrierStep.getMemoryComputeKey().getReducer()));
-        this.setSeedSupplier(HashMapSupplier.instance());
+        this.setSeedSupplier(ConcurrentHashMapSupplier.instance());
     }
 
     /**
@@ -120,7 +122,7 @@ public final class GroupStep<S, K, V> extends ReducingBarrierStep<S, Map<K, V>> 
 
     @Override
     public Map<K, V> projectTraverser(final Traverser.Admin<S> traverser) {
-        final Map<K, V> map = new HashMap<>(1);
+        final Map<K, V> map = new ConcurrentHashMap<>(1);
         this.valueTraversal.reset();
         this.valueTraversal.addStart(traverser);
 

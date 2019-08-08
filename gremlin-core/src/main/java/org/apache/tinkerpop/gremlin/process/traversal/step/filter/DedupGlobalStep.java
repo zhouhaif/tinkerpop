@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BinaryOperator;
 
 /**
@@ -182,7 +183,7 @@ public final class DedupGlobalStep<S> extends FilterStep<S> implements Traversal
 
     @Override
     public Map<Object, Traverser.Admin<S>> nextBarrier() throws NoSuchElementException {
-        final Map<Object, Traverser.Admin<S>> map = null != this.barrier ? this.barrier : new HashMap<>();
+        final Map<Object, Traverser.Admin<S>> map = null != this.barrier ? this.barrier : new ConcurrentHashMap<>();
         while (this.starts.hasNext()) {
             final Traverser.Admin<S> traverser = this.starts.next();
             final Object object;
