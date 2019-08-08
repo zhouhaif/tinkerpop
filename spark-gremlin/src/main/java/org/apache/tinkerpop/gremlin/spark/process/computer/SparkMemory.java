@@ -64,7 +64,7 @@ public final class SparkMemory implements Memory.Admin, Serializable {
         for (final MemoryComputeKey memoryComputeKey : this.memoryComputeKeys.values()) {
             this.sparkMemory.put(
                     memoryComputeKey.getKey(),
-                    sparkContext.accumulator(ObjectWritable.empty(), memoryComputeKey.getKey(), new MemoryAccumulator<>(memoryComputeKey)));
+                    sparkContext.accumulator(ObjectWritable.empty(), new MemoryAccumulator<>(memoryComputeKey)));
         }
         this.broadcast = sparkContext.broadcast(Collections.emptyMap());
     }
