@@ -74,19 +74,19 @@ public final class ComputerVerificationStrategy extends AbstractTraversalStrateg
             throw new VerificationException("Local traversals may not traverse past the local star-graph on GraphComputer: " + traversal, traversal);
 
         for (final Step<?, ?> step : traversal.getSteps()) {
-            if (step instanceof PathProcessor && ((PathProcessor) step).getMaxRequirement() != PathProcessor.ElementRequirement.ID)
-                throw new VerificationException("It is not possible to access more than a path element's id on GraphComputer: " + step + " requires " + ((PathProcessor) step).getMaxRequirement(), traversal);
+//            if (step instanceof PathProcessor && ((PathProcessor) step).getMaxRequirement() != PathProcessor.ElementRequirement.ID)
+//                throw new VerificationException("It is not possible to access more than a path element's id on GraphComputer: " + step + " requires " + ((PathProcessor) step).getMaxRequirement(), traversal);
 
             if (UNSUPPORTED_STEPS.stream().filter(c -> c.isAssignableFrom(step.getClass())).findFirst().isPresent())
                 throw new VerificationException("The following step is currently not supported on GraphComputer: " + step, traversal);
         }
 
         Step<?, ?> nextParentStep = traversal.getParent().asStep();
-        while (!(nextParentStep instanceof EmptyStep)) {
-            if (nextParentStep instanceof PathProcessor && ((PathProcessor) nextParentStep).getMaxRequirement() != PathProcessor.ElementRequirement.ID)
-                throw new VerificationException("The following path processor step requires more than the element id on GraphComputer: " + nextParentStep + " requires " + ((PathProcessor) nextParentStep).getMaxRequirement(), traversal);
-            nextParentStep = nextParentStep.getNextStep();
-        }
+//        while (!(nextParentStep instanceof EmptyStep)) {
+//            if (nextParentStep instanceof PathProcessor && ((PathProcessor) nextParentStep).getMaxRequirement() != PathProcessor.ElementRequirement.ID)
+//                throw new VerificationException("The following path processor step requires more than the element id on GraphComputer: " + nextParentStep + " requires " + ((PathProcessor) nextParentStep).getMaxRequirement(), traversal);
+//            nextParentStep = nextParentStep.getNextStep();
+//        }
     }
 
     public static ComputerVerificationStrategy instance() {
