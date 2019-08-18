@@ -3,8 +3,13 @@ package org.apache.tinkerpop.gremlin.process.traversal.step.map;
 import org.apache.tinkerpop.gremlin.process.traversal.Path;
 import org.apache.tinkerpop.gremlin.process.traversal.Traversal;
 import org.apache.tinkerpop.gremlin.process.traversal.Traverser;
+import org.apache.tinkerpop.gremlin.process.traversal.step.ByModulating;
 import org.apache.tinkerpop.gremlin.process.traversal.step.PathProcessor;
+import org.apache.tinkerpop.gremlin.process.traversal.step.TraversalParent;
 import org.apache.tinkerpop.gremlin.process.traversal.step.util.MutablePath;
+import org.apache.tinkerpop.gremlin.process.traversal.traverser.TraverserRequirement;
+import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalRing;
+import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalUtil;
 import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
@@ -12,41 +17,32 @@ import org.apache.tinkerpop.gremlin.structure.Vertex;
 import java.util.*;
 
 
-public class ShortestPathStep<S> extends MapStep<S, Path> {
+public class ShortestPathStep<S> extends MapStep<S, Path> implements TraversalParent,ByModulating,PathProcessor{
 
-    //    private Long fromIds;
     private Long toIds;
     private Integer distance;
+    private Set<String> keepLabels;
     protected Map<Object, supportParent> source = new HashMap<>();
     protected Map<Object, supportParent> target = new HashMap<>();
-//    protected Map<Object, Vertex> parent = new HashMap<>();
-//    protected Map<Object, Vertex> backParent = new HashMap<>();
+    private TraversalRing<Object, Object> traversalRing;
+
 
     public ShortestPathStep(final Traversal.Admin traversal, final Long toIds, final Integer distance) {
         super(traversal);
         this.toIds = toIds;
         this.distance = distance;
+        this.traversalRing = new TraversalRing<>();
     }
-
-//    public void addFrom(final Long fromIds) {
-//        this.fromIds = fromIds;
-//    }
-
-//    public void addTo(final Long toIds) {
-//        this.toIds = toIds;
-//    }
-
-//    public void addDistance(final Integer distance) {
-//        this.distance = distance;
-//    }
 
     @Override
     protected Traverser.Admin<Path> processNextStart() {
-        return PathProcessor.processTraverserPathLabels(super.processNextStart(), null);
+        return PathProcessor.processTraverserPathLabels(super.processNextStart(), this.keepLabels);
     }
 
     protected Path map(final Traverser.Admin<S> traverser) {
+        traversalRing.reset();
         final Path byPath = MutablePath.make();
+        final Path rePath = MutablePath.make();
         Vertex from = (Vertex) traverser.get();
         Vertex to;
         Iterator<Vertex> itTo = this.getTraversal().getGraph().get().vertices(this.toIds);
@@ -59,7 +55,8 @@ public class ShortestPathStep<S> extends MapStep<S, Path> {
         if (null != from && from.equals(to)) {
             Set s = newSet(to.label());
             byPath.extend(to, s);
-            return byPath;
+            byPath.forEach((object, labels) -> rePath.extend(TraversalUtil.applyNullable(object, this.traversalRing.next()), labels));
+            return rePath;
         }
         source.put(from.id(), new supportParent((Long) from.id(), from, null, null));
         target.put(to.id(), new supportParent((Long) to.id(), to, null, null));
@@ -71,7 +68,9 @@ public class ShortestPathStep<S> extends MapStep<S, Path> {
                 break;
             }
         }
-        return byPath;
+        byPath.forEach((object, labels) -> rePath.extend(TraversalUtil.applyNullable(object, this.traversalRing.next()), labels));
+
+        return rePath;
 
     }
 
@@ -190,6 +189,37 @@ public class ShortestPathStep<S> extends MapStep<S, Path> {
         HashSet<Object> set = new HashSet<>();
         set.add(o);
         return set;
+    }
+    @Override
+    public void modulateBy(final Traversal.Admin<?, ?> pathTraversal) {
+        this.traversalRing.addTraversal(this.integrateChild(pathTraversal));
+    }
+    @Override
+    public void setKeepLabels(final Set<String> keepLabels) {
+        this.keepLabels = new HashSet<>(keepLabels);
+    }
+    @Override
+    public Set<String> getKeepLabels() {
+        return this.keepLabels;
+    }
+    @Override
+    public ShortestPathStep<S> clone() {
+        final ShortestPathStep<S> clone = (ShortestPathStep<S>) super.clone();
+        clone.traversalRing = this.traversalRing.clone();
+        return clone;
+    }
+    @Override
+    public void reset() {
+        super.reset();
+        this.traversalRing.reset();
+    }
+    @Override
+    public List<Traversal.Admin<Object, Object>> getLocalChildren() {
+        return this.traversalRing.getTraversals();
+    }
+    @Override
+    public Set<TraverserRequirement> getRequirements() {
+        return this.getSelfAndChildRequirements(TraverserRequirement.PATH);
     }
 }
 
