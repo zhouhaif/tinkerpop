@@ -96,7 +96,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
             this.voteScope = MessageScope.Local.of(() -> this.edgeTraversal.get().clone());
             this.countScope = MessageScope.Local.of(new MessageScope.Local.ReverseTraversalSupplier(this.voteScope));
         }
-        this.prefix = this.prefix + configuration.getString(PREFIX,"");
+        this.prefix = this.prefix + configuration.getString(PREFIX, "");
         this.property = configuration.getString(PROPERTY, CLUSTER);
         this.maxIterations = configuration.getInt(MAX_ITERATIONS, 30);
         this.distributeVote = configuration.getBoolean(DISTRIBUTE_VOTE, false);
@@ -117,7 +117,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
 
     @Override
     public Set<VertexComputeKey> getVertexComputeKeys() {
-        return new HashSet<>(Arrays.asList(VertexComputeKey.of(this.property, false), VertexComputeKey.of(VOTE_STRENGTH, true),VertexComputeKey.of(this.prefix, true)));
+        return new HashSet<>(Arrays.asList(VertexComputeKey.of(this.property, false), VertexComputeKey.of(VOTE_STRENGTH, true), VertexComputeKey.of(this.prefix, true)));
     }
 
     @Override
@@ -144,7 +144,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
 
     @Override
     public <P extends WriteBackService> Class<P> getServiceClass() throws ClassNotFoundException {
-        return (Class<P>)Class.forName(WRITE_SERVICE);
+        return (Class<P>) Class.forName(WRITE_SERVICE);
     }
 
     @Override
@@ -180,7 +180,10 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
         } else {
             final Map<Serializable, Double> votes = new HashMap<>();
             votes.put(vertex.value(this.property), vertex.<Double>value(VOTE_STRENGTH));
-            messenger.receiveMessages().forEachRemaining(message -> {MapHelper.incr(votes, message.getValue0(), message.getValue1());log.debug("vertex {} receiveMessages id: {},strength: {}",vertex.id(),message.getValue0(),message.getValue1());});
+            messenger.receiveMessages().forEachRemaining(message -> {
+                MapHelper.incr(votes, message.getValue0(), message.getValue1());
+//                log.debug("vertex {} receiveMessages id: {},strength: {}", vertex.id(), message.getValue0(), message.getValue1());
+            });
             Serializable cluster = PeerPressureVertexProgram.largestCount(votes);
             if (null == cluster) cluster = (Serializable) vertex.id();
             memory.add(VOTE_TO_HALT, vertex.value(this.property).equals(cluster));
@@ -298,6 +301,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
             public boolean requiresVertexPropertyAddition() {
                 return true;
             }
+
             @Override
             public boolean requiresWriteBackToOriginalGraph() {
                 return true;
