@@ -164,7 +164,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
                 vertex.property(VertexProperty.Cardinality.single, this.property, vertex.id());
                 vertex.property(VertexProperty.Cardinality.single, VOTE_STRENGTH, voteStrength);
                 messenger.sendMessage(this.voteScope, new Pair<>((Serializable) vertex.id(), voteStrength));
-                log.debug("vertex {} sent message {},voteStrength {}",vertex.id(),vertex.id(),voteStrength);
+//                log.debug("vertex {} sent message {},voteStrength {}",vertex.id(),vertex.id(),voteStrength);
                 memory.add(VOTE_TO_HALT, false);
             }
         } else if (1 == memory.getIteration() && this.distributeVote) {
@@ -175,7 +175,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
             vertex.property(VertexProperty.Cardinality.single, this.property, vertex.id());
             vertex.property(VertexProperty.Cardinality.single, VOTE_STRENGTH, voteStrength);
             messenger.sendMessage(this.voteScope, new Pair<>((Serializable) vertex.id(), voteStrength));
-            log.debug("vertex {} sent message {},voteStrength {}",vertex.id(),vertex.id(),voteStrength);
+//            log.debug("vertex {} sent message {},voteStrength {}",vertex.id(),vertex.id(),voteStrength);
             memory.add(VOTE_TO_HALT, false);
         } else {
             final Map<Serializable, Double> votes = new HashMap<>();
@@ -186,7 +186,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
             memory.add(VOTE_TO_HALT, vertex.value(this.property).equals(cluster));
             vertex.property(VertexProperty.Cardinality.single, this.property, cluster);
             messenger.sendMessage(this.voteScope, new Pair<>(cluster, vertex.<Double>value(VOTE_STRENGTH)));
-            log.debug("vertex {} sent message {},voteStrength {}",vertex.id(),cluster,vertex.<Double>value(VOTE_STRENGTH));
+//            log.debug("vertex {} sent message {},voteStrength {}",vertex.id(),cluster,vertex.<Double>value(VOTE_STRENGTH));
         }
     }
 

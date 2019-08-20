@@ -118,6 +118,9 @@ public interface GraphComputer {
      */
     public GraphComputer vertices(final Traversal<Vertex, Vertex> vertexFilter) throws IllegalArgumentException;
 
+
+    public GraphComputer properties(final String... otherProperties) throws IllegalArgumentException;
+
     /**
      * Add a filter that will limit which edges of the vertices are loaded from the graph source.
      * The provided {@link Traversal} can only check the local star graph of the vertex and thus,

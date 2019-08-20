@@ -373,6 +373,7 @@ public final class SparkGraphComputer extends AbstractHadoopGraphComputer {
                     // if there is a registered VertexProgramInterceptor, use it to bypass the GraphComputer semantics
                     if (graphComputerConfiguration.containsKey(Constants.GREMLIN_HADOOP_VERTEX_PROGRAM_INTERCEPTOR)) {
                         try {
+                            logger.info("VertexProgramInterceptor Detected, using {}",graphComputerConfiguration.getString(Constants.GREMLIN_HADOOP_VERTEX_PROGRAM_INTERCEPTOR));
                             final SparkVertexProgramInterceptor<VertexProgram> interceptor =
                                     (SparkVertexProgramInterceptor) Class.forName(graphComputerConfiguration.getString(Constants.GREMLIN_HADOOP_VERTEX_PROGRAM_INTERCEPTOR)).newInstance();
                             computedGraphRDD = interceptor.apply(this.vertexProgram, loadedGraphRDD, memory);
@@ -394,6 +395,7 @@ public final class SparkGraphComputer extends AbstractHadoopGraphComputer {
                                 throw new TraversalInterruptedException();
                             }
                             memory.setInExecute(true);
+                            logger.info("Another Iteration VertexProgram {}, Iteration num {}",this.vertexProgram.getClass().toGenericString(),memory.getIteration());
                             viewIncomingRDD = SparkExecutor.executeVertexProgramIteration(loadedGraphRDD, viewIncomingRDD, memory, graphComputerConfiguration, vertexProgramConfiguration);
                             memory.setInExecute(false);
                             if (this.vertexProgram.terminate(memory))

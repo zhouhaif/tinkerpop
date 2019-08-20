@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
@@ -381,10 +382,20 @@ public final class StarGraph implements Graph, Serializable {
 
         public void dropEdges(final Direction direction) {
             if ((direction.equals(Direction.OUT) || direction.equals(Direction.BOTH)) && null != this.outEdges) {
+                for(String key : this.outEdges.keySet()){
+                    for(Edge edge : this.outEdges.get(key)){
+                        StarGraph.this.edgeProperties.remove(edge.id());
+                    }
+                }
                 this.outEdges.clear();
                 this.outEdges = null;
             }
             if ((direction.equals(Direction.IN) || direction.equals(Direction.BOTH)) && null != this.inEdges) {
+                for(String key : this.inEdges.keySet()){
+                    for(Edge edge : this.inEdges.get(key)){
+                        StarGraph.this.edgeProperties.remove(edge.id());
+                    }
+                }
                 this.inEdges.clear();
                 this.inEdges = null;
             }
@@ -392,12 +403,18 @@ public final class StarGraph implements Graph, Serializable {
 
         public void dropEdges(final Direction direction, final String edgeLabel) {
             if (null != this.outEdges && (direction.equals(Direction.OUT) || direction.equals(Direction.BOTH))) {
+                for(Edge edge : this.outEdges.get(edgeLabel)){
+                    StarGraph.this.edgeProperties.remove(edge.id());
+                }
                 this.outEdges.remove(edgeLabel);
 
                 if (this.outEdges.isEmpty())
                     this.outEdges = null;
             }
             if (null != this.inEdges && (direction.equals(Direction.IN) || direction.equals(Direction.BOTH))) {
+                for(Edge edge : this.inEdges.get(edgeLabel)){
+                    StarGraph.this.edgeProperties.remove(edge.id());
+                }
                 this.inEdges.remove(edgeLabel);
 
                 if (this.inEdges.isEmpty())
@@ -442,7 +459,7 @@ public final class StarGraph implements Graph, Serializable {
             ElementHelper.validateLabel(label);
             ElementHelper.legalPropertyKeyValueArray(keyValues);
             if (null == this.outEdges)
-                this.outEdges = new HashMap<>();
+                this.outEdges = new ConcurrentHashMap<>();
             List<Edge> outE = this.outEdges.get(label);
             if (null == outE) {
                 outE = new ArrayList<>();
@@ -458,7 +475,7 @@ public final class StarGraph implements Graph, Serializable {
             ElementHelper.validateLabel(label);
             ElementHelper.legalPropertyKeyValueArray(keyValues);
             if (null == this.inEdges)
-                this.inEdges = new HashMap<>();
+                this.inEdges = new ConcurrentHashMap<>();
             List<Edge> inE = this.inEdges.get(label);
             if (null == inE) {
                 inE = new ArrayList<>();
@@ -474,7 +491,7 @@ public final class StarGraph implements Graph, Serializable {
         public <V> VertexProperty<V> property(final VertexProperty.Cardinality cardinality, final String key, V value, final Object... keyValues) {
             ElementHelper.legalPropertyKeyValueArray(keyValues);
             if (null == this.vertexProperties)
-                this.vertexProperties = new HashMap<>();
+                this.vertexProperties = new ConcurrentHashMap<>();
             final List<VertexProperty> list = cardinality.equals(VertexProperty.Cardinality.single) ? new ArrayList<>(1) : this.vertexProperties.getOrDefault(key, new ArrayList<>());
             final VertexProperty<V> vertexProperty = new StarVertexProperty<>(ElementHelper.getIdValue(keyValues).orElse(nextId()), key, value);
             ElementHelper.attachProperties(vertexProperty, keyValues);
@@ -564,9 +581,14 @@ public final class StarGraph implements Graph, Serializable {
                                 this.dropEdges(Direction.IN, key);
                         }
                     if (null != this.inEdges || null != this.outEdges) {
-                        final Map<String, List<Edge>> outEdges = new HashMap<>();
-                        final Map<String, List<Edge>> inEdges = new HashMap<>();
+                        final Map<String, List<Edge>> outEdges = new ConcurrentHashMap<>();
+                        final Map<String, List<Edge>> inEdges = new ConcurrentHashMap<>();
                         graphFilter.legalEdges(this).forEachRemaining(edge -> {
+                            edge.properties().forEachRemaining(property->{
+                                if(graphFilter.checkPropertyLegality(property.key()).negative()){
+                                    property.remove();
+                                }
+                            });
                             if (edge instanceof StarGraph.StarOutEdge) {
                                 List<Edge> edges = outEdges.get(edge.label());
                                 if (null == edges) {
@@ -593,6 +615,27 @@ public final class StarGraph implements Graph, Serializable {
                             this.dropEdges(Direction.IN);
                         else
                             this.inEdges = inEdges;
+                    }
+                }
+                if (graphFilter.hasPropertyFilter()) {
+                    if(this.properties()!=null){
+                        this.properties().forEachRemaining(property->{
+                            if(graphFilter.checkPropertyLegality(property.key()).negative()){
+                                this.dropVertexProperties(property.key());
+                            }
+                        });
+                    }
+                    if(StarGraph.this.edgeProperties!=null){
+                        StarGraph.this.edgeProperties.keySet().forEach(key->{
+                            StarGraph.this.edgeProperties.get(key).keySet().forEach(key2->{
+                                if(graphFilter.checkPropertyLegality(key2).negative()){
+                                    StarGraph.this.edgeProperties.get(key).remove(key2);
+                                }
+                            });
+                            if(StarGraph.this.edgeProperties.get(key).size()==0){
+                                StarGraph.this.edgeProperties.remove(key);
+                            }
+                        });
                     }
                 }
                 return Optional.of(this);
@@ -667,10 +710,10 @@ public final class StarGraph implements Graph, Serializable {
         public <U> Property<U> property(final String key, final U value) {
             ElementHelper.validateProperty(key, value);
             if (null == metaProperties)
-                metaProperties = new HashMap<>();
+                metaProperties = new ConcurrentHashMap<>();
             Map<String, Object> properties = metaProperties.get(this.id);
             if (null == properties) {
-                properties = new HashMap<>();
+                properties = new ConcurrentHashMap<>();
                 metaProperties.put(this.id, properties);
             }
             properties.put(key, value);
@@ -782,10 +825,10 @@ public final class StarGraph implements Graph, Serializable {
         public <V> Property<V> property(final String key, final V value) {
             ElementHelper.validateProperty(key, value);
             if (null == edgeProperties)
-                edgeProperties = new HashMap<>();
+                edgeProperties = new ConcurrentHashMap<>();
             Map<String, Object> properties = edgeProperties.get(this.id);
             if (null == properties) {
-                properties = new HashMap<>();
+                properties = new ConcurrentHashMap<>();
                 edgeProperties.put(this.id, properties);
             }
             properties.put(key, value);
@@ -907,7 +950,9 @@ public final class StarGraph implements Graph, Serializable {
 
         @Override
         public void remove() {
-            throw Property.Exceptions.propertyRemovalNotSupported();
+            if (null != StarGraph.this.starVertex.edges(Direction.BOTH)){
+                StarGraph.this.edgeProperties.get(this.element.id()).remove(this.key);
+            }
         }
 
         @Override

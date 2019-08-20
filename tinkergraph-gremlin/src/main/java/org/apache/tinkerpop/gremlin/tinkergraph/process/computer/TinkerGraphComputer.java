@@ -123,6 +123,12 @@ public final class TinkerGraphComputer implements GraphComputer {
     }
 
     @Override
+    public GraphComputer properties(final String... otherProperties) {
+        this.graphFilter.setPropertyFilter(otherProperties);
+        return this;
+    }
+
+    @Override
     public GraphComputer edges(final Traversal<Vertex, Edge> edgeFilter) {
         this.graphFilter.setEdgeFilter(edgeFilter);
         return this;

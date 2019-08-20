@@ -163,6 +163,11 @@ public class TraversalStrategiesTest {
         }
 
         @Override
+        public GraphComputer properties(String... otherProperties) throws IllegalArgumentException {
+            return this;
+        }
+
+        @Override
         public GraphComputer edges(Traversal<Vertex, Edge> edgeFilter) throws IllegalArgumentException {
             return this;
         }

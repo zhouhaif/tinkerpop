@@ -45,6 +45,8 @@ import org.apache.tinkerpop.gremlin.process.traversal.util.PureTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalMatrix;
 import org.apache.tinkerpop.gremlin.structure.util.Attachable;
 import org.apache.tinkerpop.gremlin.structure.util.detached.DetachedFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -54,6 +56,8 @@ import java.util.Set;
  * @author Marko A. Rodriguez (http://markorodriguez.com)
  */
 final class MasterExecutor {
+
+    static Logger logger = LoggerFactory.getLogger(MasterExecutor.class);
 
     private MasterExecutor() {
 
@@ -120,6 +124,7 @@ final class MasterExecutor {
                     previousStep = currentStep;
                 }
             }
+            logger.info("CurrentStep: {}",currentStep.toString());
             if (!(currentStep instanceof EmptyStep)) {
                 GraphComputing.atMaster(currentStep, true);
                 while (currentStep.hasNext()) {

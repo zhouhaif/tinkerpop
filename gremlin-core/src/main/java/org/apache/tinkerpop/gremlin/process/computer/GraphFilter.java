@@ -30,12 +30,7 @@ import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import java.io.Serializable;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -80,6 +75,7 @@ public final class GraphFilter implements Cloneable, Serializable {
     }
 
     private Traversal.Admin<Vertex, Vertex> vertexFilter = null;
+    private Set propertyFilter = null;
     private Traversal.Admin<Vertex, Edge> edgeFilter = null;
     private Map<Direction, Map<String, Legal>> edgeLegality = new EnumMap<>(Direction.class);
     private boolean allowNoEdges = false;
@@ -106,6 +102,13 @@ public final class GraphFilter implements Cloneable, Serializable {
         if (!TraversalHelper.isLocalProperties(vertexFilter.asAdmin()))
             throw GraphComputer.Exceptions.vertexFilterAccessesIncidentEdges(vertexFilter);
         this.vertexFilter = vertexFilter.asAdmin().clone();
+    }
+
+    public void setPropertyFilter(final String... otherProperties) {
+//        if (!TraversalHelper.isLocalProperties(propertyFilter.asAdmin()))
+//            throw GraphComputer.Exceptions.vertexFilterAccessesIncidentEdges(propertyFilter);
+        Set<String> labelsSet = new HashSet<>(Arrays.asList(otherProperties));
+        this.propertyFilter = labelsSet;
     }
 
     /**
@@ -230,7 +233,7 @@ public final class GraphFilter implements Cloneable, Serializable {
      * @return true if either a vertex or edge filter has been provided.
      */
     public boolean hasFilter() {
-        return this.vertexFilter != null || this.edgeFilter != null;
+        return this.vertexFilter != null || this.edgeFilter != null || this.propertyFilter != null;
     }
 
     /**
@@ -240,6 +243,10 @@ public final class GraphFilter implements Cloneable, Serializable {
      */
     public boolean hasEdgeFilter() {
         return this.edgeFilter != null;
+    }
+
+    public boolean hasPropertyFilter() {
+        return this.propertyFilter != null;
     }
 
     /**
@@ -292,6 +299,18 @@ public final class GraphFilter implements Cloneable, Serializable {
             return legalMap.get(null);
         else
             return Legal.NO;
+    }
+
+    public Legal checkPropertyLegality(final String label) {
+        if (null == this.propertyFilter)
+            return Legal.YES;
+//        else if (this.allowNoEdges)
+//            return Legal.NO;
+        if (this.propertyFilter.contains(label)) {
+            return Legal.YES;
+        } else {
+            return Legal.NO;
+        }
     }
 
     /**

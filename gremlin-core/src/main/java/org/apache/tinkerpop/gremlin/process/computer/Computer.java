@@ -40,6 +40,7 @@ public final class Computer implements Function<Graph, GraphComputer>, Serializa
     private GraphComputer.Persist persist = null;
     private GraphComputer.ResultGraph resultGraph = null;
     private Traversal<Vertex, Vertex> vertices = null;
+    private String[] properties = null;
     private Traversal<Vertex, Edge> edges = null;
 
     private Computer(final Class<? extends GraphComputer> graphComputerClass) {
@@ -101,6 +102,12 @@ public final class Computer implements Function<Graph, GraphComputer>, Serializa
         return clone;
     }
 
+    public Computer properties(final String... properties) {
+        final Computer clone = this.clone();
+        clone.properties = properties;
+        return clone;
+    }
+
     public Computer edges(final Traversal<Vertex, Edge> edgeFilter) {
         final Computer clone = this.clone();
         clone.edges = edgeFilter;
@@ -122,6 +129,8 @@ public final class Computer implements Function<Graph, GraphComputer>, Serializa
             computer = computer.vertices(this.vertices);
         if (null != this.edges)
             computer.edges(this.edges);
+        if (null != this.properties)
+            computer.properties(this.properties);
         return computer;
     }
 
@@ -158,6 +167,10 @@ public final class Computer implements Function<Graph, GraphComputer>, Serializa
 
     public Traversal<Vertex, Vertex> getVertices() {
         return this.vertices;
+    }
+
+    public String[] getProperties() {
+        return this.properties;
     }
 
     public Traversal<Vertex, Edge> getEdges() {

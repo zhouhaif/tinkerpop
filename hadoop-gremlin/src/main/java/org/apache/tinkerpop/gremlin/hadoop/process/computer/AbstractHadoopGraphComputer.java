@@ -88,6 +88,12 @@ public abstract class AbstractHadoopGraphComputer implements GraphComputer {
     }
 
     @Override
+    public GraphComputer properties(final String... otherProperties) {
+        this.graphFilter.setPropertyFilter(otherProperties);
+        return this;
+    }
+
+    @Override
     public GraphComputer result(final ResultGraph resultGraph) {
         this.resultGraph = resultGraph;
         return this;

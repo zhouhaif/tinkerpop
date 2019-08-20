@@ -244,6 +244,7 @@ public class GremlinExecutor implements AutoCloseable {
      * @param lifeCycle a set of functions that can be applied at various stages of the evaluation process
      */
     public CompletableFuture<Object> eval(final String script, final String language, final Bindings boundVars,  final LifeCycle lifeCycle) {
+        long start = System.currentTimeMillis();
         final String lang = Optional.ofNullable(language).orElse("gremlin-groovy");
 
         logger.debug("Preparing to evaluate script - {} - in thread [{}]", script, Thread.currentThread().getName());
@@ -282,6 +283,8 @@ public class GremlinExecutor implements AutoCloseable {
                 // that must raise as an exception to the caller who has the returned evaluationFuture. in other words,
                 // if it occurs before this point, then the handle() method won't be called again if there is an
                 // exception that ends up below trying to completeExceptionally()
+                long end = System.currentTimeMillis();
+                logger.info("Eval script length [{}], bindings size [{}], cost [{}]ms",script.length(),bindings.size(),end-start);
                 evaluationFuture.complete(result);
             } catch (Throwable ex) {
                 final Throwable root = null == ex.getCause() ? ex : ExceptionUtils.getRootCause(ex);

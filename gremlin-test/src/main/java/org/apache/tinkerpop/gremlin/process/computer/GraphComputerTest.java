@@ -192,6 +192,11 @@ public class GraphComputerTest extends AbstractGremlinProcessTest {
         }
 
         @Override
+        public GraphComputer properties(final String... otherProperties) {
+            throw GraphComputer.Exceptions.graphFilterNotSupported();
+        }
+
+        @Override
         public GraphComputer edges(final Traversal<Vertex, Edge> edgeFilter) {
             throw GraphComputer.Exceptions.graphFilterNotSupported();
         }
