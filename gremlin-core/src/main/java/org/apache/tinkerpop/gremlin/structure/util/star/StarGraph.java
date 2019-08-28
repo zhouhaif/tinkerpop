@@ -584,11 +584,13 @@ public final class StarGraph implements Graph, Serializable {
                         final Map<String, List<Edge>> outEdges = new ConcurrentHashMap<>();
                         final Map<String, List<Edge>> inEdges = new ConcurrentHashMap<>();
                         graphFilter.legalEdges(this).forEachRemaining(edge -> {
-                            edge.properties().forEachRemaining(property->{
-                                if(graphFilter.checkPropertyLegality(property.key()).negative()){
-                                    property.remove();
-                                }
-                            });
+                            if(graphFilter.hasPropertyFilter()){
+                                edge.properties().forEachRemaining(property->{
+                                    if(graphFilter.checkPropertyLegality(property.key()).negative()){
+                                        property.remove();
+                                    }
+                                });
+                            }
                             if (edge instanceof StarGraph.StarOutEdge) {
                                 List<Edge> edges = outEdges.get(edge.label());
                                 if (null == edges) {
