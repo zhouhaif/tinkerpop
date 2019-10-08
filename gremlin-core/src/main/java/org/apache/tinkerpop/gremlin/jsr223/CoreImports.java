@@ -99,6 +99,7 @@ import org.apache.tinkerpop.gremlin.process.traversal.strategy.verification.Lamb
 import org.apache.tinkerpop.gremlin.process.traversal.strategy.verification.ReadOnlyStrategy;
 import org.apache.tinkerpop.gremlin.process.traversal.strategy.verification.StandardVerificationStrategy;
 import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalMetrics;
+import org.apache.tinkerpop.gremlin.process.udf.UdfFunctions;
 import org.apache.tinkerpop.gremlin.structure.Column;
 import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Edge;
@@ -296,6 +297,7 @@ public final class CoreImports {
         CLASS_IMPORTS.add(IteratorUtils.class);
         CLASS_IMPORTS.add(TimeUtil.class);
         CLASS_IMPORTS.add(Lambda.class);
+        CLASS_IMPORTS.add(UdfFunctions.class);
 
         /////////////
         // METHODS //
@@ -309,6 +311,7 @@ public final class CoreImports {
         uniqueMethods(Computer.class).forEach(METHOD_IMPORTS::add);
         uniqueMethods(TimeUtil.class).forEach(METHOD_IMPORTS::add);
         uniqueMethods(Lambda.class).forEach(METHOD_IMPORTS::add);
+        uniqueMethods(UdfFunctions.class).forEach(METHOD_IMPORTS::add);
 
         ///////////
         // ENUMS //
