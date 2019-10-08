@@ -384,7 +384,9 @@ public final class StarGraph implements Graph, Serializable {
             if ((direction.equals(Direction.OUT) || direction.equals(Direction.BOTH)) && null != this.outEdges) {
                 for(String key : this.outEdges.keySet()){
                     for(Edge edge : this.outEdges.get(key)){
-                        StarGraph.this.edgeProperties.remove(edge.id());
+                        if(null != StarGraph.this.edgeProperties&&StarGraph.this.edgeProperties.containsKey(edge.id())){
+                            StarGraph.this.edgeProperties.remove(edge.id());
+                        }
                     }
                 }
                 this.outEdges.clear();
@@ -393,7 +395,9 @@ public final class StarGraph implements Graph, Serializable {
             if ((direction.equals(Direction.IN) || direction.equals(Direction.BOTH)) && null != this.inEdges) {
                 for(String key : this.inEdges.keySet()){
                     for(Edge edge : this.inEdges.get(key)){
-                        StarGraph.this.edgeProperties.remove(edge.id());
+                        if(null != StarGraph.this.edgeProperties&&StarGraph.this.edgeProperties.containsKey(edge.id())){
+                            StarGraph.this.edgeProperties.remove(edge.id());
+                        }
                     }
                 }
                 this.inEdges.clear();
@@ -404,7 +408,9 @@ public final class StarGraph implements Graph, Serializable {
         public void dropEdges(final Direction direction, final String edgeLabel) {
             if (null != this.outEdges && (direction.equals(Direction.OUT) || direction.equals(Direction.BOTH))) {
                 for(Edge edge : this.outEdges.get(edgeLabel)){
-                    StarGraph.this.edgeProperties.remove(edge.id());
+                    if(null != StarGraph.this.edgeProperties&&StarGraph.this.edgeProperties.containsKey(edge.id())){
+                        StarGraph.this.edgeProperties.remove(edge.id());
+                    }
                 }
                 this.outEdges.remove(edgeLabel);
 
@@ -413,7 +419,9 @@ public final class StarGraph implements Graph, Serializable {
             }
             if (null != this.inEdges && (direction.equals(Direction.IN) || direction.equals(Direction.BOTH))) {
                 for(Edge edge : this.inEdges.get(edgeLabel)){
-                    StarGraph.this.edgeProperties.remove(edge.id());
+                    if(null != StarGraph.this.edgeProperties&&StarGraph.this.edgeProperties.containsKey(edge.id())){
+                        StarGraph.this.edgeProperties.remove(edge.id());
+                    }
                 }
                 this.inEdges.remove(edgeLabel);
 
@@ -953,7 +961,9 @@ public final class StarGraph implements Graph, Serializable {
         @Override
         public void remove() {
             if (null != StarGraph.this.starVertex.edges(Direction.BOTH)){
-                StarGraph.this.edgeProperties.get(this.element.id()).remove(this.key);
+                if(null != StarGraph.this.edgeProperties && StarGraph.this.edgeProperties.containsKey(this.element.id())){
+                    StarGraph.this.edgeProperties.get(this.element.id()).remove(this.key);
+                }
             }
         }
 
