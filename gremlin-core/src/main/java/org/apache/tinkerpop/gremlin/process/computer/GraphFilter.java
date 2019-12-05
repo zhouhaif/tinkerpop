@@ -19,10 +19,14 @@
 
 package org.apache.tinkerpop.gremlin.process.computer;
 
+import org.apache.tinkerpop.gremlin.process.traversal.P;
+import org.apache.tinkerpop.gremlin.process.traversal.Step;
 import org.apache.tinkerpop.gremlin.process.traversal.Traversal;
 import org.apache.tinkerpop.gremlin.process.traversal.step.branch.UnionStep;
+import org.apache.tinkerpop.gremlin.process.traversal.step.filter.HasStep;
 import org.apache.tinkerpop.gremlin.process.traversal.step.filter.RangeGlobalStep;
 import org.apache.tinkerpop.gremlin.process.traversal.step.map.VertexStep;
+import org.apache.tinkerpop.gremlin.process.traversal.step.util.HasContainer;
 import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalHelper;
 import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalUtil;
 import org.apache.tinkerpop.gremlin.structure.Direction;
@@ -79,7 +83,9 @@ public final class GraphFilter implements Cloneable, Serializable {
     private Traversal.Admin<Vertex, Edge> edgeFilter = null;
     private Map<Direction, Map<String, Legal>> edgeLegality = new EnumMap<>(Direction.class);
     private boolean allowNoEdges = false;
-
+    private boolean allowNoProperties = false;
+    private boolean hasVertexLabelFilter = false;
+    private P<String> vertexLabelFilter = null;
     public GraphFilter() {
         // no args constructor
     }
@@ -89,6 +95,31 @@ public final class GraphFilter implements Cloneable, Serializable {
             this.setVertexFilter(computer.getVertices());
         if (null != computer.getEdges())
             this.setEdgeFilter(computer.getEdges());
+    }
+
+    private boolean checkVertexLabelFilter(Traversal<Vertex, Vertex> vertexFilter){
+        if(vertexFilter!=null && vertexFilter.asAdmin().getSteps().size()>0){
+            for(Step s :vertexFilter.asAdmin().getSteps()){
+                if(s instanceof HasStep){
+                    List<HasContainer> containers = ((HasStep) s).getHasContainers();
+                    for(HasContainer container:containers ){
+                        if (container.getKey().equals("~label")){
+                            this.vertexLabelFilter = (P<String>) container.getPredicate();
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean isHasVertexLabelFilter(){
+        return hasVertexLabelFilter;
+    }
+
+    public P<String> getVertexLabelFilter(){
+        return vertexLabelFilter;
     }
 
     /**
@@ -102,6 +133,7 @@ public final class GraphFilter implements Cloneable, Serializable {
         if (!TraversalHelper.isLocalProperties(vertexFilter.asAdmin()))
             throw GraphComputer.Exceptions.vertexFilterAccessesIncidentEdges(vertexFilter);
         this.vertexFilter = vertexFilter.asAdmin().clone();
+        this.hasVertexLabelFilter = checkVertexLabelFilter(vertexFilter);
     }
 
     public void setPropertyFilter(final String... otherProperties) {
@@ -109,6 +141,9 @@ public final class GraphFilter implements Cloneable, Serializable {
 //            throw GraphComputer.Exceptions.vertexFilterAccessesIncidentEdges(propertyFilter);
         Set<String> labelsSet = new HashSet<>(Arrays.asList(otherProperties));
         this.propertyFilter = labelsSet;
+        if(labelsSet.size()==1&&labelsSet.contains("")){
+            this.allowNoProperties = true;
+        }
     }
 
     /**
@@ -329,6 +364,14 @@ public final class GraphFilter implements Cloneable, Serializable {
                 .reduce(Legal.NO, (a, b) -> a.compareTo(b) < 0 ? a : b);
     }
 
+    public boolean allowNoEdges(){
+        return this.allowNoEdges;
+    }
+
+    public boolean allowNoProperties(){
+        return this.allowNoProperties;
+    }
+
     @Override
     public int hashCode() {
         return (null == this.edgeFilter ? 111 : this.edgeFilter.hashCode()) ^ (null == this.vertexFilter ? 222 : this.vertexFilter.hashCode());
@@ -352,6 +395,7 @@ public final class GraphFilter implements Cloneable, Serializable {
             final GraphFilter clone = (GraphFilter) super.clone();
             if (null != this.vertexFilter)
                 clone.vertexFilter = this.vertexFilter.clone();
+                clone.hasVertexLabelFilter = checkVertexLabelFilter(this.vertexFilter);
             if (null != this.edgeFilter)
                 clone.edgeFilter = this.edgeFilter.clone();
             return clone;
