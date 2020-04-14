@@ -50,6 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -104,7 +105,8 @@ final class MasterExecutor {
                 traverser.setSideEffects(traversal.get().getSideEffects());
                 if (traverser.isHalted())
                     haltedTraversers.add(haltedTraverserStrategy.halt(traverser));
-                else if (isRemoteTraverser(traverser, traversalMatrix))  // this is so that patterns like order().name work as expected. try and stay local as long as possible
+                //stay local as long as possible is wrong, we need to run with workers
+                else if (isRemoteTraverser(traverser, traversalMatrix)||isRemoteUnfold(traverser, traversalMatrix))  // this is so that patterns like order().name work as expected. try and stay local as long as possible
                     remoteActiveTraversers.add(traverser.detach());
                 else {
                     currentStep = traversalMatrix.getStepById(traverser.getStepId());
@@ -146,6 +148,11 @@ final class MasterExecutor {
         return traverser.get() instanceof Attachable &&
                 !(traverser.get() instanceof Path) &&
                 !isLocalElement(traversalMatrix.getStepById(traverser.getStepId()));
+    }
+
+    private static boolean isRemoteUnfold(final Traverser.Admin traverser, final TraversalMatrix<?, ?> traversalMatrix){
+        boolean isRemoteUnfold = traverser.get() instanceof Map && ((Map) traverser.get()).size() > 0 && ((Map) traverser.get()).keySet().toArray()[0] instanceof Attachable && traversalMatrix.getStepById(traverser.getStepId()) instanceof UnfoldMStep;
+        return isRemoteUnfold;
     }
 
     // TODO: once this is complete (fully known), move to TraversalHelper

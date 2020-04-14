@@ -762,6 +762,11 @@ public interface GraphTraversal<S, E> extends Traversal<S, E> {
         return this.asAdmin().addStep(new UnfoldStep<>(this.asAdmin()));
     }
 
+    public default <E2> GraphTraversal<S, E2> unfoldM() {
+        this.asAdmin().getBytecode().addStep(Symbols.unfold);
+        return this.asAdmin().addStep(new UnfoldMStep<>(this.asAdmin()));
+    }
+
     /**
      * Rolls up objects in the stream into an aggregate list.
      *
@@ -924,6 +929,16 @@ public interface GraphTraversal<S, E> extends Traversal<S, E> {
     public default <K, V> GraphTraversal<S, Map<K, V>> group() {
         this.asAdmin().getBytecode().addStep(Symbols.group);
         return this.asAdmin().addStep(new GroupStep<>(this.asAdmin()));
+    }
+
+    public default <K, V> GraphTraversal<S, Map<K, V>> groupV() {
+        this.asAdmin().getBytecode().addStep(Symbols.group);
+        return this.asAdmin().addStep(new GroupVStep<>(this.asAdmin()));
+    }
+
+    public default <K, V> GraphTraversal<S, Map<K,V>> groupAct() {
+        this.asAdmin().getBytecode().addStep(Symbols.group);
+        return this.asAdmin().addStep(new GroupActStep<>(this.asAdmin()));
     }
 
     /**

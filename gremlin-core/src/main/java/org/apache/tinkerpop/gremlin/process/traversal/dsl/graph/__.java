@@ -382,6 +382,10 @@ public class __ {
         return __.<A>start().unfold();
     }
 
+    public static <A> GraphTraversal<A, A> unfoldM() {
+        return __.<A>start().unfoldM();
+    }
+
     /**
      * @see GraphTraversal#fold()
      */
@@ -471,6 +475,14 @@ public class __ {
      */
     public static <A, K, V> GraphTraversal<A, Map<K, V>> group() {
         return __.<A>start().group();
+    }
+
+    public static <A, K, V> GraphTraversal<A, Map<K, V>> groupV() {
+        return __.<A>start().groupV();
+    }
+
+    public static <A, K, V> GraphTraversal<A, Map<K, V>> groupAct() {
+        return __.<A>start().groupAct();
     }
 
     /**

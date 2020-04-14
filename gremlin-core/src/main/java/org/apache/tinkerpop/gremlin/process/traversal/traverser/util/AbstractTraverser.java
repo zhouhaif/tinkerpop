@@ -213,6 +213,6 @@ public abstract class AbstractTraverser<T> implements Traverser<T>, Traverser.Ad
 
     @Override
     public String toString() {
-        return this.t.toString();
+        return "Detail " + this.t.toString() + " bulk " + this.bulk() + " stepID " + this.getStepId();
     }
 }

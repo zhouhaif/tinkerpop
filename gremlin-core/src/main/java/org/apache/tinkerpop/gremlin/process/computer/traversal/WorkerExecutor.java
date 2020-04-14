@@ -24,12 +24,14 @@ import org.apache.tinkerpop.gremlin.process.computer.Messenger;
 import org.apache.tinkerpop.gremlin.process.traversal.Step;
 import org.apache.tinkerpop.gremlin.process.traversal.TraversalSideEffects;
 import org.apache.tinkerpop.gremlin.process.traversal.Traverser;
-import org.apache.tinkerpop.gremlin.process.traversal.step.Barrier;
-import org.apache.tinkerpop.gremlin.process.traversal.step.Bypassing;
-import org.apache.tinkerpop.gremlin.process.traversal.step.GraphComputing;
-import org.apache.tinkerpop.gremlin.process.traversal.step.LocalBarrier;
+import org.apache.tinkerpop.gremlin.process.traversal.step.*;
+import org.apache.tinkerpop.gremlin.process.traversal.step.map.GroupActStep;
+import org.apache.tinkerpop.gremlin.process.traversal.step.map.GroupVStep;
+import org.apache.tinkerpop.gremlin.process.traversal.step.map.UnfoldMStep;
 import org.apache.tinkerpop.gremlin.process.traversal.step.util.EmptyStep;
 import org.apache.tinkerpop.gremlin.process.traversal.strategy.decoration.HaltedTraverserStrategy;
+import org.apache.tinkerpop.gremlin.process.traversal.traverser.B_LP_O_S_SE_SL_Traverser;
+import org.apache.tinkerpop.gremlin.process.traversal.traverser.GroupVTraverser;
 import org.apache.tinkerpop.gremlin.process.traversal.traverser.util.TraverserSet;
 import org.apache.tinkerpop.gremlin.process.traversal.traverser.util.IndexedTraverserSet;
 import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalMatrix;
@@ -38,19 +40,21 @@ import org.apache.tinkerpop.gremlin.structure.Property;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.util.Attachable;
 import org.apache.tinkerpop.gremlin.structure.util.Host;
+import org.apache.tinkerpop.gremlin.structure.util.detached.DetachedFactory;
 import org.apache.tinkerpop.gremlin.structure.util.reference.ReferenceFactory;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Marko A. Rodriguez (http://markorodriguez.com)
  */
 final class WorkerExecutor {
+    static Logger logger = LoggerFactory.getLogger(WorkerExecutor.class);
 
     private WorkerExecutor() {
 
@@ -75,22 +79,41 @@ final class WorkerExecutor {
         // MASTER ACTIVE
         // these are traversers that are going from OLTP (master) to OLAP (workers)
         // these traversers were broadcasted from the master traversal to the workers for attachment
-        final IndexedTraverserSet<Object,Vertex> maybeActiveTraversers = memory.get(TraversalVertexProgram.ACTIVE_TRAVERSERS);
+        final IndexedTraverserSet<Object, Vertex> maybeActiveTraversers = memory.get(TraversalVertexProgram.ACTIVE_TRAVERSERS);
         // some memory systems are interacted with by multiple threads and thus, concurrent modification can happen at iterator.remove().
         // its better to reduce the memory footprint and shorten the active traverser list so synchronization is worth it.
         // most distributed OLAP systems have the memory partitioned and thus, this synchronization does nothing.
         synchronized (maybeActiveTraversers) {
             if (!maybeActiveTraversers.isEmpty()) {
-                final Collection<Traverser.Admin<Object>> traversers = maybeActiveTraversers.get(vertex);
-                if (traversers != null) {
-                    final Iterator<Traverser.Admin<Object>> iterator = traversers.iterator();
-                    while (iterator.hasNext()) {
-                        final Traverser.Admin<Object> traverser = iterator.next();
-                        iterator.remove();
-                        maybeActiveTraversers.remove(traverser);
-                        traverser.attach(Attachable.Method.get(vertex));
-                        traverser.setSideEffects(traversalSideEffects);
-                        toProcessTraversers.add(traverser);
+                Traverser.Admin<Object> ifExist;
+                Step s;
+                if ((s = traversalMatrix.getStepById((ifExist = maybeActiveTraversers.peek()).getStepId())) instanceof UnfoldMStep) {
+                    Object traversers;
+                    if ((traversers = ifExist.get()) instanceof Map) {
+                        Object value = ((Map) traversers).get(vertex);
+                        if (value != null){
+                            logger.debug("UnfoldM");
+                            Map t = new HashMap<Attachable,Object>();
+                            t.put(DetachedFactory.detach(vertex,true),value);
+                            final Traverser.Admin<Object> traverser = new B_LP_O_S_SE_SL_Traverser(t.entrySet().iterator().next(), s.getNextStep(), 1L);
+                            traverser.setStepId(s.getNextStep().getId());
+                            traverser.setSideEffects(traversalSideEffects);
+                            toProcessTraversers.add((traverser));
+                            ((Map) traversers).remove(vertex);
+                        }
+                    }
+                } else {
+                    final Collection<Traverser.Admin<Object>> traversers = maybeActiveTraversers.get(vertex);
+                    if (traversers != null) {
+                        final Iterator<Traverser.Admin<Object>> iterator = traversers.iterator();
+                        while (iterator.hasNext()) {
+                            final Traverser.Admin<Object> traverser = iterator.next();
+                            iterator.remove();
+                            maybeActiveTraversers.remove(traverser);
+                            traverser.attach(Attachable.Method.get(vertex));
+                            traverser.setSideEffects(traversalSideEffects);
+                            toProcessTraversers.add(traverser);
+                        }
                     }
                 }
             }
@@ -115,6 +138,7 @@ final class WorkerExecutor {
         final Iterator<TraverserSet<Object>> messages = messenger.receiveMessages();
         while (messages.hasNext()) {
             IteratorUtils.removeOnNext(messages.next().iterator()).forEachRemaining(traverser -> {
+                logger.debug("vertex {}, receiveMessages traverser{}, step {}", vertex.id(), traverser, traversalMatrix.getStepById(traverser.getStepId()));
                 if (traverser.isHalted()) {
                     if (returnHaltedTraversers)
                         memory.add(TraversalVertexProgram.HALTED_TRAVERSERS, new TraverserSet<>(haltedTraverserStrategy.halt(traverser)));
@@ -140,10 +164,11 @@ final class WorkerExecutor {
             Iterator<Traverser.Admin<Object>> traversers = toProcessTraversers.iterator();
             while (traversers.hasNext()) {
                 final Traverser.Admin<Object> traverser = traversers.next();
+//                toProcessTraversers.remove(traverser);
                 traversers.remove();
                 final Step<Object, Object> currentStep = traversalMatrix.getStepById(traverser.getStepId());
                 // try and fill up the current step as much as possible with traversers to get a bulking optimization
-                if (!currentStep.getId().equals(previousStep.getId()) && !(previousStep instanceof EmptyStep))
+                if (!currentStep.getId().equals(previousStep.getId()) && !(previousStep instanceof EmptyStep) && !(currentStep instanceof GroupActStep))
                     WorkerExecutor.drainStep(vertex, previousStep, activeTraversers, haltedTraversers, memory, returnHaltedTraversers, haltedTraverserStrategy);
                 currentStep.addStart(traverser);
                 previousStep = currentStep;
@@ -158,11 +183,23 @@ final class WorkerExecutor {
                     final Traverser.Admin<Object> traverser = traversers.next();
                     traversers.remove();
                     // decide whether to message the traverser or to process it locally
-                    if (traverser.get() instanceof Element || traverser.get() instanceof Property) {      // GRAPH OBJECT
+                    if (traversalMatrix.getStepById(traverser.getStepId()) instanceof GroupActStep && traverser.get() instanceof Map) {
+                        Map map = (Map) traverser.get();
+                        if (map != null && map.size() > 0) {
+                            voteToHalt.set(false);
+                            for (Object key : map.keySet()) {
+                                final Vertex hostingVertex = Host.getHostingVertex(key);
+                                Traverser.Admin traverser1 = splitMapTraverser(key, map.get(key), traversalMatrix.getStepById(traverser.getStepId()));
+                                logger.debug("{} send messeng {} to {}, next step {}", vertex.id(), traverser1, hostingVertex.id(), traversalMatrix.getStepById(traverser1.getStepId()));
+                                messenger.sendMessage(MessageScope.Global.of(hostingVertex), new TraverserSet<>(traverser1.detach()));
+                            }
+                        }
+                    } else if (traverser.get() instanceof Element || traverser.get() instanceof Property) {      // GRAPH OBJECT
                         // if the element is remote, then message, else store it locally for re-processing
                         final Vertex hostingVertex = Host.getHostingVertex(traverser.get());
-                        if (!vertex.equals(hostingVertex)) { // if its host is not the current vertex, then send the traverser to the hosting vertex
+                        if (!vertex.equals(hostingVertex) || previousStep instanceof GroupVStep || previousStep.getNextStep() instanceof GroupVStep) { // if its host is not the current vertex, then send the traverser to the hosting vertex
                             voteToHalt.set(false); // if message is passed, then don't vote to halt
+                            logger.debug("{} send messeng {} to {}, next step {}", vertex.id(), traverser, hostingVertex.id(), traversalMatrix.getStepById(traverser.getStepId()));
                             messenger.sendMessage(MessageScope.Global.of(hostingVertex), new TraverserSet<>(traverser.detach()));
                         } else {
                             traverser.attach(Attachable.Method.get(vertex)); // necessary for select() steps that reference the current object
@@ -185,7 +222,13 @@ final class WorkerExecutor {
                                   final boolean returnHaltedTraversers,
                                   final HaltedTraverserStrategy haltedTraverserStrategy) {
         GraphComputing.atMaster(step, false);
-        if (step instanceof Barrier) {
+        if (step instanceof ByVertex || step instanceof ByPrevious) {
+            logger.debug("WorkerExecutor-drainStep vertex {}, worker LOCAL PROCESSING step {}", vertex.id(), step);
+            while (step.hasNext()) {
+                activeTraversers.add(step.next());
+            }
+        } else if (step instanceof Barrier) {
+            logger.debug("WorkerExecutor-drainStep vertex {}, Barrier step {}", vertex.id(), step);
             if (step instanceof Bypassing)
                 ((Bypassing) step).setBypass(true);
             if (step instanceof LocalBarrier) {
@@ -218,6 +261,7 @@ final class WorkerExecutor {
                 memory.add(TraversalVertexProgram.MUTATED_MEMORY_KEYS, new HashSet<>(Collections.singleton(step.getId())));
             }
         } else { // LOCAL PROCESSING
+            logger.debug("WorkerExecutor-drainStep vertex {}, worker LOCAL PROCESSING step {}", vertex.id(), step);
             step.forEachRemaining(traverser -> {
                 if (traverser.isHalted() &&
                         // if its a ReferenceFactory (one less iteration required)
@@ -233,5 +277,16 @@ final class WorkerExecutor {
                 }
             });
         }
+    }
+
+    private static Traverser.Admin splitMapTraverser(Object key, Object value, Step step) {
+        Traverser.Admin traverser = null;
+        if (step instanceof GroupActStep) {
+            Map map = (Map) ((GroupActStep) step).getSeedSupplier().get();
+            map.put(key, value);
+            traverser = new GroupVTraverser(map, step, 1L);
+            traverser.setStepId(step.getId());
+        }
+        return traverser;
     }
 }

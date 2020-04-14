@@ -73,6 +73,8 @@ import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
 import org.apache.tinkerpop.gremlin.util.function.MutableMetricsSupplier;
 import org.apache.tinkerpop.gremlin.util.iterator.EmptyIterator;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -96,7 +98,7 @@ import java.util.Set;
  * @author Marko A. Rodriguez (http://markorodriguez.com)
  */
 public final class TraversalVertexProgram implements VertexProgram<TraverserSet<Object>> {
-
+    Logger logger = LoggerFactory.getLogger(this.getClass());
     public static final String TRAVERSAL = "gremlin.traversalVertexProgram.traversal";
     public static final String HALTED_TRAVERSERS = "gremlin.traversalVertexProgram.haltedTraversers";
     public static final String ACTIVE_TRAVERSERS = "gremlin.traversalVertexProgram.activeTraversers";
@@ -205,6 +207,7 @@ public final class TraversalVertexProgram implements VertexProgram<TraverserSet<
 
         // does the traversal need profile information
         this.profile = !TraversalHelper.getStepsOfAssignableClassRecursively(ProfileStep.class, this.traversal.get()).isEmpty();
+        logger.debug("TraversalVertexProgram-loadState get traversal {}",traversal.getPure().getSteps());
     }
 
     @Override
@@ -312,6 +315,7 @@ public final class TraversalVertexProgram implements VertexProgram<TraverserSet<
 
     @Override
     public boolean terminate(final Memory memory) {
+        logger.debug("TraversalVertexProgram-terminate memory {}",memory.keys());
         // memory is local
         MemoryTraversalSideEffects.setMemorySideEffects(this.traversal.get(), memory, ProgramPhase.TERMINATE);
         final boolean voteToHalt = memory.<Boolean>get(VOTE_TO_HALT);
@@ -326,9 +330,12 @@ public final class TraversalVertexProgram implements VertexProgram<TraverserSet<
             final TraverserSet<Object> haltedTraversers = memory.get(HALTED_TRAVERSERS);
             // get all barrier traversers
             final Set<String> completedBarriers = new HashSet<>();
+            logger.debug("TraversalVertexProgram-terminate beginning MasterExecutor.processMemory");
             MasterExecutor.processMemory(this.traversalMatrix, memory, toProcessTraversers, completedBarriers);
+            logger.debug("TraversalVertexProgram-terminate beginning MasterExecutor.processTraversers, get toProcessTraversers {},remoteActiveTraversers {},haltedTraversers {}",toProcessTraversers.bulkSize(),remoteActiveTraversers.size(),haltedTraversers.size());
             // process all results from barriers locally and when elements are touched, put them in remoteActiveTraversers
             MasterExecutor.processTraversers(this.traversal, this.traversalMatrix, toProcessTraversers, remoteActiveTraversers, haltedTraversers, this.haltedTraverserStrategy);
+
             // tell parallel barriers that might not have been active in the last round that they are no longer active
             memory.set(COMPLETED_BARRIERS, completedBarriers);
             if (!remoteActiveTraversers.isEmpty() ||

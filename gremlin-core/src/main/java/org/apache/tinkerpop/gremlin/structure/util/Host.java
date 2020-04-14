@@ -22,6 +22,8 @@ import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Property;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
+import java.util.Map;
+
 /**
  * A marker interface that identifies an object as something that an {@link Attachable} can connect to.
  *
@@ -43,6 +45,9 @@ public interface Host {
                 return ((Edge) obj).outVertex();
             else if (obj instanceof Property)
                 obj = ((Property) obj).element();
+            else if (obj instanceof Map){
+                return (Vertex) ((Map) obj).keySet().iterator().next();
+            }
             else
                 throw new IllegalStateException("The host of the object is unknown: " + obj.toString() + ':' + obj.getClass().getCanonicalName());
         }
