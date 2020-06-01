@@ -30,6 +30,7 @@ import org.apache.tinkerpop.gremlin.process.traversal.step.map.GroupVStep;
 import org.apache.tinkerpop.gremlin.process.traversal.step.map.UnfoldMStep;
 import org.apache.tinkerpop.gremlin.process.traversal.step.util.EmptyStep;
 import org.apache.tinkerpop.gremlin.process.traversal.strategy.decoration.HaltedTraverserStrategy;
+import org.apache.tinkerpop.gremlin.process.traversal.traverser.B_LP_O_P_S_SE_SL_Traverser;
 import org.apache.tinkerpop.gremlin.process.traversal.traverser.B_LP_O_S_SE_SL_Traverser;
 import org.apache.tinkerpop.gremlin.process.traversal.traverser.GroupVTraverser;
 import org.apache.tinkerpop.gremlin.process.traversal.traverser.util.TraverserSet;
@@ -91,11 +92,11 @@ final class WorkerExecutor {
                     Object traversers;
                     if ((traversers = ifExist.get()) instanceof Map) {
                         Object value = ((Map) traversers).get(vertex);
-                        if (value != null){
+                        if (value != null) {
                             logger.debug("UnfoldM");
-                            Map t = new HashMap<Attachable,Object>();
-                            t.put(DetachedFactory.detach(vertex,true),value);
-                            final Traverser.Admin<Object> traverser = new B_LP_O_S_SE_SL_Traverser(t.entrySet().iterator().next(), s.getNextStep(), 1L);
+                            Map t = new HashMap<Attachable, Object>();
+                            t.put(DetachedFactory.detach(vertex, true), value);
+                            final Traverser.Admin<Object> traverser = new B_LP_O_P_S_SE_SL_Traverser(t.entrySet().iterator().next(), s.getNextStep(), 1L);
                             traverser.setStepId(s.getNextStep().getId());
                             traverser.setSideEffects(traversalSideEffects);
                             toProcessTraversers.add((traverser));
@@ -139,6 +140,25 @@ final class WorkerExecutor {
         while (messages.hasNext()) {
             IteratorUtils.removeOnNext(messages.next().iterator()).forEachRemaining(traverser -> {
                 logger.debug("vertex {}, receiveMessages traverser{}, step {}", vertex.id(), traverser, traversalMatrix.getStepById(traverser.getStepId()));
+                if (traverser instanceof GroupVTraverser) {
+                    Object v = ((Map) traverser.get()).get(vertex);
+                    if (v != null && v instanceof Vertex) {
+                        if (((Vertex) v).id() == vertex.id()) {
+                            ((Map) traverser.get()).remove(vertex);
+                            ((Map) traverser.get()).put(vertex, vertex);
+                        }
+                    } else if (v instanceof List) {
+                        if (((List) v).size() > 0) {
+                            Object v1 = ((List) v).get(0);
+                            if (v1 != null && v1 instanceof Vertex) {
+                                if (((Vertex) v1).id().equals(vertex.id())) {
+                                    ((Map) traverser.get()).remove(vertex);
+                                    ((Map) traverser.get()).put(vertex, vertex);
+                                }
+                            }
+                        }
+                    }
+                }
                 if (traverser.isHalted()) {
                     if (returnHaltedTraversers)
                         memory.add(TraversalVertexProgram.HALTED_TRAVERSERS, new TraverserSet<>(haltedTraverserStrategy.halt(traverser)));
