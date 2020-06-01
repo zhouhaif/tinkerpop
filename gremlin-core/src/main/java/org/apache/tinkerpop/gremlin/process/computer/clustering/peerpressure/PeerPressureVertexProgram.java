@@ -19,12 +19,7 @@
 package org.apache.tinkerpop.gremlin.process.computer.clustering.peerpressure;
 
 import org.apache.commons.configuration.Configuration;
-import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
-import org.apache.tinkerpop.gremlin.process.computer.Memory;
-import org.apache.tinkerpop.gremlin.process.computer.MemoryComputeKey;
-import org.apache.tinkerpop.gremlin.process.computer.MessageScope;
-import org.apache.tinkerpop.gremlin.process.computer.Messenger;
-import org.apache.tinkerpop.gremlin.process.computer.VertexComputeKey;
+import org.apache.tinkerpop.gremlin.process.computer.*;
 import org.apache.tinkerpop.gremlin.process.computer.util.AbstractVertexProgramBuilder;
 import org.apache.tinkerpop.gremlin.process.computer.util.StaticVertexProgram;
 import org.apache.tinkerpop.gremlin.process.traversal.Operator;
@@ -35,10 +30,7 @@ import org.apache.tinkerpop.gremlin.process.traversal.step.util.MapHelper;
 import org.apache.tinkerpop.gremlin.process.traversal.util.PureTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.util.ScriptTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalUtil;
-import org.apache.tinkerpop.gremlin.structure.Edge;
-import org.apache.tinkerpop.gremlin.structure.Graph;
-import org.apache.tinkerpop.gremlin.structure.Vertex;
-import org.apache.tinkerpop.gremlin.structure.VertexProperty;
+import org.apache.tinkerpop.gremlin.structure.*;
 import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 import org.javatuples.Pair;
@@ -46,12 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * @author Marko A. Rodriguez (http://markorodriguez.com)
@@ -64,7 +51,8 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
     private MessageScope.Local<?> countScope = MessageScope.Local.of(new MessageScope.Local.ReverseTraversalSupplier(this.voteScope));
 
     public static final String CLUSTER = "gremlin.peerPressureVertexProgram.cluster";
-    private static final String VOTE_STRENGTH = "gremlin.peerPressureVertexProgram.voteStrength";
+    public  static final String VOTE_STRENGTH = "gremlin.peerPressureVertexProgram.voteStrength";
+    public static final String LOCAL_VOTE_STRENGTH = "gremlin.peerPressureVertexProgram.localVoteStrength";
     private static final String INITIAL_VOTE_STRENGTH_TRAVERSAL = "gremlin.pageRankVertexProgram.initialVoteStrengthTraversal";
     private static final String PROPERTY = "gremlin.peerPressureVertexProgram.property";
     private static final String MAX_ITERATIONS = "gremlin.peerPressureVertexProgram.maxIterations";
@@ -117,7 +105,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
 
     @Override
     public Set<VertexComputeKey> getVertexComputeKeys() {
-        return new HashSet<>(Arrays.asList(VertexComputeKey.of(this.property, false), VertexComputeKey.of(VOTE_STRENGTH, true), VertexComputeKey.of(this.prefix, true)));
+        return new HashSet<>(Arrays.asList(VertexComputeKey.of(this.property, false), VertexComputeKey.of(VOTE_STRENGTH, true), VertexComputeKey.of(LOCAL_VOTE_STRENGTH, false), VertexComputeKey.of(this.prefix, true)));
     }
 
     @Override
@@ -163,8 +151,8 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
                         TraversalUtil.apply(vertex, this.initialVoteStrengthTraversal.get()).doubleValue());
                 vertex.property(VertexProperty.Cardinality.single, this.property, vertex.id());
                 vertex.property(VertexProperty.Cardinality.single, VOTE_STRENGTH, voteStrength);
+                vertex.property(VertexProperty.Cardinality.single, LOCAL_VOTE_STRENGTH, voteStrength);
                 messenger.sendMessage(this.voteScope, new Pair<>((Serializable) vertex.id(), voteStrength));
-//                log.debug("vertex {} sent message {},voteStrength {}",vertex.id(),vertex.id(),voteStrength);
                 memory.add(VOTE_TO_HALT, false);
             }
         } else if (1 == memory.getIteration() && this.distributeVote) {
@@ -174,22 +162,23 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
                     IteratorUtils.reduce(IteratorUtils.map(messenger.receiveMessages(), Pair::getValue1), 0.0d, (a, b) -> a + b);
             vertex.property(VertexProperty.Cardinality.single, this.property, vertex.id());
             vertex.property(VertexProperty.Cardinality.single, VOTE_STRENGTH, voteStrength);
+            vertex.property(VertexProperty.Cardinality.single, LOCAL_VOTE_STRENGTH, voteStrength);
             messenger.sendMessage(this.voteScope, new Pair<>((Serializable) vertex.id(), voteStrength));
-//            log.debug("vertex {} sent message {},voteStrength {}",vertex.id(),vertex.id(),voteStrength);
             memory.add(VOTE_TO_HALT, false);
         } else {
-            final Map<Serializable, Double> votes = new HashMap<>();
-            votes.put(vertex.value(this.property), vertex.<Double>value(VOTE_STRENGTH));
-            messenger.receiveMessages().forEachRemaining(message -> {
-                MapHelper.incr(votes, message.getValue0(), message.getValue1());
-//                log.debug("vertex {} receiveMessages id: {},strength: {}", vertex.id(), message.getValue0(), message.getValue1());
-            });
-            Serializable cluster = PeerPressureVertexProgram.largestCount(votes);
-            if (null == cluster) cluster = (Serializable) vertex.id();
+            final Map<Serializable, Double> votes = new HashMap<>(36);
+            //为了防止两点之间多边权重过大，导致一直两点互换id，最终无法在同一个社团里，添加本地权重为上一次投票的最大权重
+            votes.put(vertex.value(this.property), vertex.<Double>value(LOCAL_VOTE_STRENGTH));
+            messenger.receiveMessages().forEachRemaining(message -> MapHelper.incr(votes, message.getValue0(), message.getValue1()));
+            Pair<Serializable, Double> pair = PeerPressureVertexProgram.largestCount(votes);
+            Serializable cluster = pair.getValue0();
+            if (null == cluster) {
+                cluster = (Serializable) vertex.id();
+            }
             memory.add(VOTE_TO_HALT, vertex.value(this.property).equals(cluster));
             vertex.property(VertexProperty.Cardinality.single, this.property, cluster);
+            vertex.property(VertexProperty.Cardinality.single, LOCAL_VOTE_STRENGTH, pair.getValue1());
             messenger.sendMessage(this.voteScope, new Pair<>(cluster, vertex.<Double>value(VOTE_STRENGTH)));
-//            log.debug("vertex {} sent message {},voteStrength {}",vertex.id(),cluster,vertex.<Double>value(VOTE_STRENGTH));
         }
     }
 
@@ -204,7 +193,7 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
         }
     }
 
-    private static <T> T largestCount(final Map<T, Double> map) {
+    private static <T> Pair<T,Double> largestCount(final Map<T, Double> map) {
         T largestKey = null;
         double largestValue = Double.MIN_VALUE;
         for (Map.Entry<T, Double> entry : map.entrySet()) {
@@ -218,7 +207,8 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
                 largestValue = entry.getValue();
             }
         }
-        return largestKey;
+
+        return new Pair<>(largestKey,largestValue);
     }
 
     @Override
