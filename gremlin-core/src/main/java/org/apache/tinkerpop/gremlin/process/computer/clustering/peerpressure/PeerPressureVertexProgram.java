@@ -30,10 +30,14 @@ import org.apache.tinkerpop.gremlin.process.traversal.step.util.MapHelper;
 import org.apache.tinkerpop.gremlin.process.traversal.util.PureTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.util.ScriptTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalUtil;
-import org.apache.tinkerpop.gremlin.structure.*;
+import org.apache.tinkerpop.gremlin.structure.Edge;
+import org.apache.tinkerpop.gremlin.structure.Graph;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.apache.tinkerpop.gremlin.structure.VertexProperty;
 import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
 import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 import org.javatuples.Pair;
+import org.javatuples.Quartet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -167,17 +171,20 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
             memory.add(VOTE_TO_HALT, false);
         } else {
             final Map<Serializable, Double> votes = new HashMap<>(36);
-            //为了防止两点之间多边权重过大，导致一直两点互换id，最终无法在同一个社团里，添加本地权重为上一次投票的最大权重
+            //为了防止两点之间多边权重过大，导致一直两点互换id，最终无法在同一个社团里，添加本地权重为上一次投票的非本地最大权重
             votes.put(vertex.value(this.property), vertex.<Double>value(LOCAL_VOTE_STRENGTH));
             messenger.receiveMessages().forEachRemaining(message -> MapHelper.incr(votes, message.getValue0(), message.getValue1()));
-            Pair<Serializable, Double> pair = PeerPressureVertexProgram.largestCount(votes);
-            Serializable cluster = pair.getValue0();
+            Quartet<Serializable, Double, Serializable, Double> quartet = PeerPressureVertexProgram.largestCount(votes, vertex.value(this.property));
+            Serializable cluster = quartet.getValue0();
             if (null == cluster) {
                 cluster = (Serializable) vertex.id();
             }
+            if(!vertex.value(this.property).equals(cluster)){
+                log.debug("vertex [{}] changed community from [{}] to [{}]",vertex.id(), vertex.value(this.property), cluster);
+            }
             memory.add(VOTE_TO_HALT, vertex.value(this.property).equals(cluster));
             vertex.property(VertexProperty.Cardinality.single, this.property, cluster);
-            vertex.property(VertexProperty.Cardinality.single, LOCAL_VOTE_STRENGTH, pair.getValue1());
+            vertex.property(VertexProperty.Cardinality.single, LOCAL_VOTE_STRENGTH, quartet.getValue3() != Double.MIN_VALUE ? quartet.getValue3() : vertex.<Double>value(VOTE_STRENGTH));
             messenger.sendMessage(this.voteScope, new Pair<>(cluster, vertex.<Double>value(VOTE_STRENGTH)));
         }
     }
@@ -193,22 +200,53 @@ public class PeerPressureVertexProgram extends StaticVertexProgram<Pair<Serializ
         }
     }
 
-    private static <T> Pair<T,Double> largestCount(final Map<T, Double> map) {
+    private static <T> Quartet<T,Double,T,Double> largestCount(final Map<T, Double> map, T local) {
         T largestKey = null;
+        T secondKey = null;
         double largestValue = Double.MIN_VALUE;
+        double secondValue = Double.MIN_VALUE;
         for (Map.Entry<T, Double> entry : map.entrySet()) {
-            if (entry.getValue() == largestValue) {
-                if (null != largestKey && largestKey.toString().compareTo(entry.getKey().toString()) > 0) {
-                    largestKey = entry.getKey();
-                    largestValue = entry.getValue();
-                }
-            } else if (entry.getValue() > largestValue) {
+            if(entry.getValue() > largestValue){
+                secondKey = largestKey;
+                secondValue = largestValue;
                 largestKey = entry.getKey();
                 largestValue = entry.getValue();
+                continue;
+            } else if (entry.getValue() == largestValue){
+                if (null != largestKey && largestKey.toString().compareTo(entry.getKey().toString()) > 0) {
+                    secondKey = largestKey;
+                    secondValue = largestValue;
+                    largestKey = entry.getKey();
+                    largestValue = entry.getValue();
+                    continue;
+                }
             }
+            if (entry.getValue() > secondValue){
+                secondKey = entry.getKey();
+                secondValue = entry.getValue();
+            } else if (entry.getValue() == secondValue){
+                if (null != secondKey && secondKey.toString().compareTo(entry.getKey().toString()) > 0){
+                    secondKey = entry.getKey();
+                    secondValue = entry.getValue();
+                }
+            }
+
+//            if (entry.getValue() == largestValue) {
+//                if (null != largestKey && largestKey.toString().compareTo(entry.getKey().toString()) > 0) {
+//                    largestKey = entry.getKey();
+//                    largestValue = entry.getValue();
+//                }
+//            } else if (entry.getValue() > largestValue) {
+//                largestKey = entry.getKey();
+//                largestValue = entry.getValue();
+//            }
         }
 
-        return new Pair<>(largestKey,largestValue);
+        if(local.equals(largestKey)){
+            return new Quartet<>(largestKey, largestValue, secondKey, secondValue);
+        } else {
+            return new Quartet<>(largestKey, largestValue, largestKey, largestValue);
+        }
     }
 
     @Override
