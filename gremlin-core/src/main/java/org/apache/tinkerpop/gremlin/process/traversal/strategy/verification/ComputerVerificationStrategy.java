@@ -70,8 +70,8 @@ public final class ComputerVerificationStrategy extends AbstractTraversalStrateg
             throw new VerificationException("One bulk is currently not supported on GraphComputer: " + traversal, traversal);
 
         // you can not traverse past the local star graph with localChildren (e.g. by()-modulators).
-        if (!TraversalHelper.isGlobalChild(traversal) && !TraversalHelper.isLocalStarGraph(traversal))
-            throw new VerificationException("Local traversals may not traverse past the local star-graph on GraphComputer: " + traversal, traversal);
+//        if (!TraversalHelper.isGlobalChild(traversal) && !TraversalHelper.isLocalStarGraph(traversal))
+//            throw new VerificationException("Local traversals may not traverse past the local star-graph on GraphComputer: " + traversal, traversal);
 
         for (final Step<?, ?> step : traversal.getSteps()) {
 //            if (step instanceof PathProcessor && ((PathProcessor) step).getMaxRequirement() != PathProcessor.ElementRequirement.ID)
