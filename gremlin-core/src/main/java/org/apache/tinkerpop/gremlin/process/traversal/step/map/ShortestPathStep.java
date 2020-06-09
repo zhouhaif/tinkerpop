@@ -17,7 +17,7 @@ import org.apache.tinkerpop.gremlin.structure.Vertex;
 import java.util.*;
 
 
-public class ShortestPathStep<S> extends MapStep<S, Path> implements TraversalParent,ByModulating,PathProcessor{
+public class ShortestPathStep<S> extends FlatMapStep<S, Path> implements TraversalParent, ByModulating, PathProcessor {
 
     private Long toIds;
     private Integer distance;
@@ -39,43 +39,53 @@ public class ShortestPathStep<S> extends MapStep<S, Path> implements TraversalPa
         return PathProcessor.processTraverserPathLabels(super.processNextStart(), this.keepLabels);
     }
 
-    protected Path map(final Traverser.Admin<S> traverser) {
-        traversalRing.reset();
-        final Path byPath = MutablePath.make();
-        final Path rePath = MutablePath.make();
-        Vertex from = (Vertex) traverser.get();
-        Vertex to;
-        Iterator<Vertex> itTo = this.getTraversal().getGraph().get().vertices(this.toIds);
-        if (null != itTo && itTo.hasNext()) {
-            to = itTo.next();
-        } else {
-            return null;
-        }
-
-        if (null != from && from.equals(to)) {
-            Set s = newSet(to.label());
-            byPath.extend(to, s);
-            byPath.forEach((object, labels) -> rePath.extend(TraversalUtil.applyNullable(object, this.traversalRing.next()), labels));
-            return rePath;
-        }
-        source.put(from.id(), new supportParent((Long) from.id(), from, null, null));
-        target.put(to.id(), new supportParent((Long) to.id(), to, null, null));
-        while (true) {
-            if (forward(byPath) || --distance < 0) {
-                break;
+    @Override
+    protected Iterator<Path> flatMap(Traverser.Admin<S> traverser) {
+        {
+            traversalRing.reset();
+            Vertex from = (Vertex) traverser.get();
+            Vertex to;
+            Iterator<Vertex> itTo = this.getTraversal().getGraph().get().vertices(this.toIds);
+            if (null != itTo && itTo.hasNext()) {
+                to = itTo.next();
+            } else {
+                return null;
             }
-            if (backward(byPath) || --distance < 0) {
-                break;
+
+            if (null != from && from.equals(to)) {
+                Set s = newSet(to.label());
+                final Path byPath = MutablePath.make();
+                final Path rePath = MutablePath.make();
+                byPath.extend(to, s);
+                byPath.forEach((object, labels) -> rePath.extend(TraversalUtil.applyNullable(object, this.traversalRing.next()), labels));
+                return Collections.singletonList(rePath).iterator();
             }
+            Set<Path> byPaths = new HashSet<>();
+            Set<Path> rePaths = new HashSet<>();
+            source.put(from.id(), new supportParent((Long) from.id(), from, null, null));
+            target.put(to.id(), new supportParent((Long) to.id(), to, null, null));
+            while (true) {
+                if (forward(byPaths) || --distance < 0) {
+                    break;
+                }
+                if (backward(byPaths) || --distance < 0) {
+                    break;
+                }
+            }
+            byPaths.forEach(byPath -> {
+                Path rePath = MutablePath.make();
+                byPath.forEach((object, labels) -> rePath.extend(TraversalUtil.applyNullable(object, this.traversalRing.next()), labels));
+                rePaths.add(rePath);
+            });
+
+            return rePaths.iterator();
+
         }
-        byPath.forEach((object, labels) -> rePath.extend(TraversalUtil.applyNullable(object, this.traversalRing.next()), labels));
-
-        return rePath;
-
     }
 
-    private boolean forward(Path byPath) {
+    private boolean forward(Set<Path> byPaths) {
         Map<Object, supportParent> newVertices = new HashMap<>();
+        boolean flag = false;
         for (supportParent s : source.values()) {
             Vertex v = s.current;
             Iterator<Edge> edges = v.edges(Direction.BOTH);
@@ -84,11 +94,11 @@ public class ShortestPathStep<S> extends MapStep<S, Path> implements TraversalPa
                 Vertex from = e.outVertex();
                 Vertex to = e.inVertex();
                 if (target.containsKey(from.id())) {
-                    path(s, target.get(from.id()), e, byPath);
-                    return true;
+                    path(s, target.get(from.id()), e, byPaths);
+                    flag = true;
                 } else if (target.containsKey(to.id())) {
-                    path(s, target.get(to.id()), e, byPath);
-                    return true;
+                    path(s, target.get(to.id()), e, byPaths);
+                    flag = true;
                 }
                 if (from.equals(v)) {
                     if (!source.containsKey((to.id())) &&
@@ -107,12 +117,14 @@ public class ShortestPathStep<S> extends MapStep<S, Path> implements TraversalPa
             }
 
         }
+        if (flag) return true;
         source = newVertices;
         return false;
     }
 
-    private boolean backward(Path byPath) {
+    private boolean backward(Set<Path> byPaths) {
         Map<Object, supportParent> newVertices = new HashMap<>();
+        boolean flag = true;
         for (supportParent s : target.values()) {
             Vertex v = s.current;
             Iterator<Edge> edges = v.edges(Direction.BOTH);
@@ -121,11 +133,11 @@ public class ShortestPathStep<S> extends MapStep<S, Path> implements TraversalPa
                 Vertex from = e.outVertex();
                 Vertex to = e.inVertex();
                 if (source.containsKey(from.id())) {
-                    path(source.get(from.id()), s, e, byPath);
-                    return true;
+                    path(source.get(from.id()), s, e, byPaths);
+                    flag = true;
                 } else if (source.containsKey(to.id())) {
-                    path(source.get(to.id()), s, e, byPath);
-                    return true;
+                    path(source.get(to.id()), s, e, byPaths);
+                    flag = true;
                 }
                 if (from.equals(v)) {
                     if (!target.containsKey((to.id())) &&
@@ -142,6 +154,7 @@ public class ShortestPathStep<S> extends MapStep<S, Path> implements TraversalPa
                 }
             }
         }
+        if (flag) return true;
         target = newVertices;
         return false;
     }
@@ -161,20 +174,21 @@ public class ShortestPathStep<S> extends MapStep<S, Path> implements TraversalPa
         return bypath;
     }
 
-    private Path path(supportParent f, supportParent b, Edge e, Path bypath) {
-        toPath(f, bypath);
+    private void path(supportParent f, supportParent b, Edge e, Set<Path> byPaths) {
+        Path byPath = MutablePath.make();
+        toPath(f, byPath);
         Set s = newSet(e.label());
-        bypath.extend(e,s);
+        byPath.extend(e, s);
         while (b.parent != null) {
             s = newSet(b.current.label());
-            bypath.extend(b.current, s);
-            s= newSet(b.currentEdge.label());
-            bypath.extend(b.currentEdge,s);
+            byPath.extend(b.current, s);
+            s = newSet(b.currentEdge.label());
+            byPath.extend(b.currentEdge, s);
             b = b.parent;
         }
         s = newSet(b.current.label());
-        bypath.extend(b.current, s);
-        return bypath;
+        byPath.extend(b.current, s);
+        byPaths.add(byPath);
     }
 
     private boolean notLoop(Vertex v, supportParent s) {
@@ -190,33 +204,40 @@ public class ShortestPathStep<S> extends MapStep<S, Path> implements TraversalPa
         set.add(o);
         return set;
     }
+
     @Override
     public void modulateBy(final Traversal.Admin<?, ?> pathTraversal) {
         this.traversalRing.addTraversal(this.integrateChild(pathTraversal));
     }
+
     @Override
     public void setKeepLabels(final Set<String> keepLabels) {
         this.keepLabels = new HashSet<>(keepLabels);
     }
+
     @Override
     public Set<String> getKeepLabels() {
         return this.keepLabels;
     }
+
     @Override
     public ShortestPathStep<S> clone() {
         final ShortestPathStep<S> clone = (ShortestPathStep<S>) super.clone();
         clone.traversalRing = this.traversalRing.clone();
         return clone;
     }
+
     @Override
     public void reset() {
         super.reset();
         this.traversalRing.reset();
     }
+
     @Override
     public List<Traversal.Admin<Object, Object>> getLocalChildren() {
         return this.traversalRing.getTraversals();
     }
+
     @Override
     public Set<TraverserRequirement> getRequirements() {
         return this.getSelfAndChildRequirements(TraverserRequirement.PATH);
