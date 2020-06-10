@@ -121,7 +121,7 @@
                 </exclusion>
                 <exclusion>
                     <groupId>org.scala-lang.modules</groupId>
-                    <artifactId>scala-xml_2.11</artifactId>
+                    <artifactId>scala-xml_2.12</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>javax.activation</groupId>
@@ -249,8 +249,8 @@
         </dependency>
         <dependency>
             <groupId>org.scala-lang.modules</groupId>
-            <artifactId>scala-xml_2.11</artifactId>
-            <version>1.0.5</version>
+            <artifactId>scala-xml_2.12</artifactId>
+            <version>1.0.6</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.scala-lang</groupId>
