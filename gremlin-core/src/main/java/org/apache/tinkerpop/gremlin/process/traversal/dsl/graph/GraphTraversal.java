@@ -2463,9 +2463,14 @@ public interface GraphTraversal<S, E> extends Traversal<S, E> {
                 .addStep(new ShortestPathVertexProgramStep(this.asAdmin()));
     }
 
-    public default GraphTraversal<S, Path> shortestPathTransaction (final Long toIds,final Integer distance) {
+    public default GraphTraversal<S, Path> shortestPathTransaction(final long toIds, final int distance) {
         this.asAdmin().getBytecode().addStep(Symbols.shortestPathTransaction);
-        return this.asAdmin().addStep(new ShortestPathStep<>(this.asAdmin(),toIds,distance));
+        return this.asAdmin().addStep(new ShortestPathStep<>(this.asAdmin(), toIds, 0, distance));
+    }
+
+    public default GraphTraversal<S, Path> shortestPathTransaction(final long toIds, final int lower, final int distance) {
+        this.asAdmin().getBytecode().addStep(Symbols.shortestPathTransaction);
+        return this.asAdmin().addStep(new ShortestPathStep<>(this.asAdmin(), toIds, lower, distance));
     }
 
     /**

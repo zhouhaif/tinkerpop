@@ -18,18 +18,21 @@ import java.util.*;
 
 
 public class ShortestPathStep<S> extends FlatMapStep<S, Path> implements TraversalParent, ByModulating, PathProcessor {
-
-    private Long toIds;
-    private Integer distance;
+//    static Logger logger = LoggerFactory.getLogger(ShortestPathStep.class);
+    private final long toIds;
+    private final int lower;
+    private int distance;
+    private int degree = 0;
     private Set<String> keepLabels;
-    protected Map<Object, supportParent> source = new HashMap<>();
-    protected Map<Object, supportParent> target = new HashMap<>();
+    private Map<Object, List<supportParent>> source = new HashMap<>();
+    private Map<Object, List<supportParent>> target = new HashMap<>();
     private TraversalRing<Object, Object> traversalRing;
 
 
-    public ShortestPathStep(final Traversal.Admin traversal, final Long toIds, final Integer distance) {
+    public ShortestPathStep(final Traversal.Admin traversal, final long toIds, final int lower, final int distance) {
         super(traversal);
         this.toIds = toIds;
+        this.lower = lower;
         this.distance = distance;
         this.traversalRing = new TraversalRing<>();
     }
@@ -53,7 +56,7 @@ public class ShortestPathStep<S> extends FlatMapStep<S, Path> implements Travers
             }
 
             if (null != from && from.equals(to)) {
-                Set s = newSet(to.label());
+                Set<String> s = newSet(to.label());
                 final Path byPath = MutablePath.make();
                 final Path rePath = MutablePath.make();
                 byPath.extend(to, s);
@@ -62,13 +65,13 @@ public class ShortestPathStep<S> extends FlatMapStep<S, Path> implements Travers
             }
             Set<Path> byPaths = new HashSet<>();
             Set<Path> rePaths = new HashSet<>();
-            source.put(from.id(), new supportParent((Long) from.id(), from, null, null));
-            target.put(to.id(), new supportParent((Long) to.id(), to, null, null));
+            source.put(from.id(), Collections.singletonList(new supportParent((Long) from.id(), from, null, null)));
+            target.put(to.id(), Collections.singletonList(new supportParent((Long) to.id(), to, null, null)));
             while (true) {
-                if (forward(byPaths) || --distance < 0) {
+                if (forward(byPaths) || --distance < 1) {
                     break;
                 }
-                if (backward(byPaths) || --distance < 0) {
+                if (backward(byPaths) || --distance < 1) {
                     break;
                 }
             }
@@ -84,100 +87,151 @@ public class ShortestPathStep<S> extends FlatMapStep<S, Path> implements Travers
     }
 
     private boolean forward(Set<Path> byPaths) {
-        Map<Object, supportParent> newVertices = new HashMap<>();
+        degree++;
+        Map<Object, List<supportParent>> newVertices = new HashMap<>();
         boolean flag = false;
-        for (supportParent s : source.values()) {
-            Vertex v = s.current;
-            Iterator<Edge> edges = v.edges(Direction.BOTH);
-            while (edges.hasNext()) {
-                Edge e = edges.next();
-                Vertex from = e.outVertex();
-                Vertex to = e.inVertex();
-                if (target.containsKey(from.id())) {
-                    path(s, target.get(from.id()), e, byPaths);
-                    flag = true;
-                } else if (target.containsKey(to.id())) {
-                    path(s, target.get(to.id()), e, byPaths);
-                    flag = true;
-                }
-                if (from.equals(v)) {
-                    if (!source.containsKey((to.id())) &&
-                            !newVertices.containsKey(to.id()) &&
-                            notLoop(to, s)) {
-                        newVertices.put(to.id(), new supportParent((Long) to.id(), to, e, s));
+        for (List<supportParent> list : source.values()) {
+            for (supportParent s : list) {
+                Vertex v = s.current;
+                Iterator<Edge> edges = v.edges(Direction.BOTH);
+                while (edges.hasNext()) {
+                    Edge e = edges.next();
+                    Vertex from = e.outVertex();
+                    Vertex to = e.inVertex();
+                    if (from.equals(v)) {
+                        if (degree >= lower && target.containsKey(to.id())
+                                && filterPath(Collections.singletonList(s), target.get(to.id()), e, byPaths)) {
+                            flag = true;
+                        }
+                        if (!source.containsKey(to.id()) &&
+//                                !newVertices.containsKey(to.id()) &&
+                                notLoop(to, s)) {
+                            addNewVertices(newVertices, s, e, to);
+                        }
+                    } else if (to.equals(v)) {
+                        if (degree >= lower && target.containsKey(from.id())
+                                && filterPath(Collections.singletonList(s), target.get(from.id()), e, byPaths)) {
+                            flag = true;
+                        }
+                        if (!source.containsKey(from.id()) &&
+//                                !newVertices.containsKey(from.id()) &&
+                                notLoop(from, s)) {
+                            addNewVertices(newVertices, s, e, from);
+                        }
                     }
-                } else if (to.equals(v)) {
-                    if (!source.containsKey(from.id()) &&
-                            !newVertices.containsKey(from.id()) &&
-                            notLoop(from, s)) {
-                        newVertices.put(from.id(), new supportParent((Long) from.id(), from, e, s));
-                    }
                 }
-
             }
-
         }
         if (flag) return true;
         source = newVertices;
+//        logger.info("第" + degree + "次查找,source key:" + source.keySet().toString());
         return false;
     }
 
     private boolean backward(Set<Path> byPaths) {
-        Map<Object, supportParent> newVertices = new HashMap<>();
-        boolean flag = true;
-        for (supportParent s : target.values()) {
-            Vertex v = s.current;
-            Iterator<Edge> edges = v.edges(Direction.BOTH);
-            while (edges.hasNext()) {
-                Edge e = edges.next();
-                Vertex from = e.outVertex();
-                Vertex to = e.inVertex();
-                if (source.containsKey(from.id())) {
-                    path(source.get(from.id()), s, e, byPaths);
-                    flag = true;
-                } else if (source.containsKey(to.id())) {
-                    path(source.get(to.id()), s, e, byPaths);
-                    flag = true;
-                }
-                if (from.equals(v)) {
-                    if (!target.containsKey((to.id())) &&
-                            !newVertices.containsKey(to.id()) &&
-                            notLoop(to, s)) {
-                        newVertices.put(to.id(), new supportParent((Long) to.id(), to, e, s));
-                    }
-                } else if (to.equals(v)) {
-                    if (!target.containsKey(from.id()) &&
-                            !newVertices.containsKey(from.id()) &&
-                            notLoop(from, s)) {
-                        newVertices.put(from.id(), new supportParent((Long) from.id(), from, e, s));
+        degree++;
+        Map<Object, List<supportParent>> newVertices = new HashMap<>();
+        boolean flag = false;
+        for (List<supportParent> list : target.values()) {
+            for (supportParent s : list) {
+                Vertex v = s.current;
+                Iterator<Edge> edges = v.edges(Direction.BOTH);
+                while (edges.hasNext()) {
+                    Edge e = edges.next();
+                    Vertex from = e.outVertex();
+                    Vertex to = e.inVertex();
+                    if (from.equals(v)) {
+                        if (degree >= lower && source.containsKey(to.id())
+                                && filterPath(source.get(to.id()), Collections.singletonList(s), e, byPaths)) {
+//                        path(source.get(to.id()), s, e, byPaths);
+                            flag = true;
+                        }
+                        if (!target.containsKey(to.id()) &&
+//                                !newVertices.containsKey(to.id()) &&
+                                notLoop(to, s)) {
+//                            newVertices.put(to.id(), new supportParent((Long) to.id(), to, e, s));
+                            addNewVertices(newVertices, s, e, to);
+                        }
+                    } else if (to.equals(v)) {
+                        if (degree >= lower && source.containsKey(from.id())
+                                && filterPath(source.get(from.id()), Collections.singletonList(s), e, byPaths)) {
+//                        path(source.get(from.id()), s, e, byPaths);
+                            flag = true;
+                        }
+                        if (!target.containsKey(from.id()) &&
+//                                !newVertices.containsKey(from.id()) &&
+                                notLoop(from, s)) {
+                            addNewVertices(newVertices, s, e, from);
+                        }
                     }
                 }
             }
         }
         if (flag) return true;
         target = newVertices;
+//        logger.info("第" + degree + "次查找,target key:" + target.keySet().toString());
         return false;
     }
 
-    private Path toPath(supportParent f, Path bypath) {
-        if (f.parent == null) {
-            Set s = newSet(f.current.label());
-            bypath.extend(f.current, s);
-            return bypath;
+    private void addNewVertices(Map<Object, List<supportParent>> newVertices, supportParent s, Edge e, Vertex v) {
+        List<supportParent> temp;
+        if ((temp = newVertices.get(v.id())) == null) {
+            newVertices.put(v.id(), new ArrayList<>(Collections.singletonList(new supportParent((Long) v.id(), v, e, s))));
         } else {
-            toPath(f.parent, bypath);
-            Set s = newSet(f.currentEdge.label());
-            bypath.extend(f.currentEdge, s);
-            s = newSet(f.current.label());
-            bypath.extend(f.current, s);
+            temp.add(new supportParent((Long) v.id(), v, e, s));
+            newVertices.put(v.id(), temp);
         }
-        return bypath;
+    }
+
+    private boolean filterPath(List<supportParent> f, List<supportParent> b, Edge e, Set<Path> byPaths) {
+        boolean flag = false;
+        for (supportParent forward : f) {
+            for (supportParent backward : b) {
+                //满足下限步长
+                if ((countLength(forward) + countLength(backward) + 1) >= lower) {
+                    //筛选成环
+                    //a->b->c->b->d     c->b->a     b->d
+                    //a->b->c->a->d     c->b->a     a->d
+                    //a->b->c           a->b        c
+                    Set<Long> forwardSet = traceSupport(forward);
+                    Set<Long> backwardSet = traceSupport(backward);
+//                    logger.info("forward:" + forwardSet.toString() + "|backward:" + backwardSet.toString());
+                    forwardSet.retainAll(backwardSet);
+                    if (forwardSet.isEmpty()) {
+                        //构建路径
+                        path(forward, backward, e, byPaths);
+                        flag = true;
+                    }
+                }
+            }
+        }
+        return flag;
+    }
+
+    private Set<Long> traceSupport(supportParent support) {
+        Set<Long> s = new HashSet<>();
+        supportParent current = support;
+        while (current != null) {
+            s.add(current.id);
+            current = current.parent;
+        }
+        return s;
+    }
+
+    private int countLength(final supportParent support) {
+        int length = 0;
+        supportParent current = support;
+        while (current.parent != null) {
+            length++;
+            current = current.parent;
+        }
+        return length;
     }
 
     private void path(supportParent f, supportParent b, Edge e, Set<Path> byPaths) {
         Path byPath = MutablePath.make();
         toPath(f, byPath);
-        Set s = newSet(e.label());
+        Set<String> s = newSet(e.label());
         byPath.extend(e, s);
         while (b.parent != null) {
             s = newSet(b.current.label());
@@ -191,6 +245,19 @@ public class ShortestPathStep<S> extends FlatMapStep<S, Path> implements Travers
         byPaths.add(byPath);
     }
 
+    private void toPath(supportParent f, Path bypath) {
+        if (f.parent == null) {
+            Set<String> s = newSet(f.current.label());
+            bypath.extend(f.current, s);
+        } else {
+            toPath(f.parent, bypath);
+            Set<String> s = newSet(f.currentEdge.label());
+            bypath.extend(f.currentEdge, s);
+            s = newSet(f.current.label());
+            bypath.extend(f.current, s);
+        }
+    }
+
     private boolean notLoop(Vertex v, supportParent s) {
         while (s.parent != null) {
             if (v.id().equals(s.parent.id)) return false;
@@ -199,8 +266,8 @@ public class ShortestPathStep<S> extends FlatMapStep<S, Path> implements Travers
         return true;
     }
 
-    private HashSet<Object> newSet(Object o) {
-        HashSet<Object> set = new HashSet<>();
+    private HashSet<String> newSet(String o) {
+        HashSet<String> set = new HashSet<>();
         set.add(o);
         return set;
     }
