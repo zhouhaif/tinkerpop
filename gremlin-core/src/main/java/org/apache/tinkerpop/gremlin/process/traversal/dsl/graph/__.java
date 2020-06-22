@@ -313,6 +313,10 @@ public class __ {
         return __.<A>start().shortestPathTransaction(toIds, lower, distance);
     }
 
+    public static <A> GraphTraversal<A, Path> shortestPathTransaction(final Long toIds, final int lower, final int distance, boolean black) {
+        return __.<A>start().shortestPathTransaction(toIds, lower, distance, black);
+    }
+
     /**
      * @see GraphTraversal#match(Traversal[])
      */

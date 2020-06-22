@@ -13,27 +13,30 @@ import org.apache.tinkerpop.gremlin.process.traversal.util.TraversalUtil;
 import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.apache.tinkerpop.gremlin.structure.util.empty.EmptyVertexProperty;
 
 import java.util.*;
 
 
 public class ShortestPathStep<S> extends FlatMapStep<S, Path> implements TraversalParent, ByModulating, PathProcessor {
-//    static Logger logger = LoggerFactory.getLogger(ShortestPathStep.class);
+    //    static Logger logger = LoggerFactory.getLogger(ShortestPathStep.class);
     private final long toIds;
     private final int lower;
     private int distance;
     private int degree = 0;
+    private final boolean black;
     private Set<String> keepLabels;
     private Map<Object, List<supportParent>> source = new HashMap<>();
     private Map<Object, List<supportParent>> target = new HashMap<>();
     private TraversalRing<Object, Object> traversalRing;
 
 
-    public ShortestPathStep(final Traversal.Admin traversal, final long toIds, final int lower, final int distance) {
+    public ShortestPathStep(final Traversal.Admin traversal, final long toIds, final int lower, final int distance, boolean black) {
         super(traversal);
         this.toIds = toIds;
         this.lower = lower;
         this.distance = distance;
+        this.black = black;
         this.traversalRing = new TraversalRing<>();
     }
 
@@ -198,14 +201,40 @@ public class ShortestPathStep<S> extends FlatMapStep<S, Path> implements Travers
 //                    logger.info("forward:" + forwardSet.toString() + "|backward:" + backwardSet.toString());
                     forwardSet.retainAll(backwardSet);
                     if (forwardSet.isEmpty()) {
-                        //构建路径
-                        path(forward, backward, e, byPaths);
-                        flag = true;
+                        if (black) {
+                            if (traceBlack(forward, backward)) {
+                                path(forward, backward, e, byPaths);
+                                flag = true;
+                            }
+                        } else {
+                            path(forward, backward, e, byPaths);
+                            flag = true;
+                        }
                     }
                 }
             }
         }
         return flag;
+    }
+
+    private boolean traceBlack(supportParent forward, supportParent backward) {
+        supportParent current = forward;
+        while (current != null) {
+            Vertex v = current.current;
+            if (!(v.property("GraphBlack") instanceof EmptyVertexProperty)) {
+                return true;
+            }
+            current = current.parent;
+        }
+        current = backward;
+        while (current != null) {
+            Vertex v = current.current;
+            if (!(v.property("GraphBlack") instanceof EmptyVertexProperty)) {
+                return true;
+            }
+            current = current.parent;
+        }
+        return false;
     }
 
     private Set<Long> traceSupport(supportParent support) {
