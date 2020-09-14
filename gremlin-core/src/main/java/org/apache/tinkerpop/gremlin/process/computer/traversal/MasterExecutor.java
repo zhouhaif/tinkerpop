@@ -92,7 +92,9 @@ final class MasterExecutor {
 
             // these are traversers that are at the master traversal and will either halt here or be distributed back to the workers as needed
             final Iterator<Traverser.Admin<Object>> traversers = toProcessTraversers.iterator();
+            long count = 0L;
             while (traversers.hasNext()) {
+                count ++;
                 final Traverser.Admin<Object> traverser = traversers.next();
                 traversers.remove();
                 traverser.set(DetachedFactory.detach(traverser.get(), true)); // why?
@@ -120,10 +122,12 @@ final class MasterExecutor {
                     previousStep = currentStep;
                 }
             }
-            logger.info("CurrentStep: {}",currentStep.toString());
+            logger.info("CurrentStep: {}, traversers count[{}]",currentStep.toString(), count);
+            long count2 = 0L;
             if (!(currentStep instanceof EmptyStep)) {
                 GraphComputing.atMaster(currentStep, true);
                 while (currentStep.hasNext()) {
+                    count2 ++;
                     final Traverser.Admin<Object> traverser = currentStep.next();
                     if (traverser.isHalted())
                         haltedTraversers.add(haltedTraverserStrategy.halt(traverser));
@@ -133,6 +137,7 @@ final class MasterExecutor {
                         localActiveTraversers.add(traverser);
                 }
             }
+            logger.info("CurrentStep: {}, after compute traversers count[{}]",currentStep.toString(), count2);
             assert toProcessTraversers.isEmpty();
             toProcessTraversers = localActiveTraversers;
         }
